@@ -14,7 +14,9 @@
 #include "MHZ19.h"
 #include <SoftwareSerial.h>
 #include "bitmap.c"
+#include "main.h"
 #include <EasyButton.h>
+#include <math.h>
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -47,9 +49,9 @@ const int dataSetLength = 22;
 int graphPoints[5][dataSetLength];
 unsigned long timePoints[dataSetLength];
 
-volatile int selectedDataSet = 0;
+volatile int selectedDataSet = 1;
 
-unsigned long scale = 2;
+float scale = 2;
 int yMax = 160;
 int xOffSet = 280;
 int numYLabels = 8;
@@ -85,9 +87,6 @@ void setup() {
     tft.drawLine(0, 40, 240, 40, ILI9341_WHITE);
 
     drawScales();
-    tft.setTextColor(ILI9341_WHITE);
-    tft.setCursor(90, xOffSet + 20);
-    tft.print("3 Hour Trend");
 
     button.begin();
     button.onPressed(onPressed);
@@ -119,7 +118,7 @@ void loop() {
         // Lazy update the CO2
         if (lastCO2PPM != CO2) {
             // CO2
-            int color;
+            int color = ILI9341_CYAN;
             if (CO2 <= 500) {
                 color = ILI9341_BLUE;
             } else if (CO2 <= 1000) {
@@ -154,12 +153,11 @@ void loop() {
         }
 
         // Add a graph data point every 8 mins.
-        if ((millis() - graphIntervalTimer > 1000) || graphIntervalTimer == 0) {
+        if ((millis() - graphIntervalTimer > GRAPH_INTERVAL) || graphIntervalTimer == 0) {
             addMeasurement(CO2, Temp, millis());
             drawGraph();
             graphIntervalTimer = millis();
         }
-
 
         lastTemperature = Temp;
         lastCO2PPM = CO2;
@@ -194,11 +192,9 @@ void drawGraph() {
         if (!graphPoints[selectedDataSet][j]) {
             continue;
         }
-        Serial.println("Comparing min.");
         if (graphPoints[selectedDataSet][j] < min || min == 0) {
             min = graphPoints[selectedDataSet][j];
         }
-        Serial.println("Comparing max.");
         if (graphPoints[selectedDataSet][j] > max || max == 0) {
             max = graphPoints[selectedDataSet][j];
         }
@@ -213,15 +209,13 @@ void drawGraph() {
         if (graphPoints[selectedDataSet][i] <= 0) {
             continue;
         }
-        unsigned long scaled;
-        if (scale < 1) {
-             scaled = (graphPoints[selectedDataSet][i] * scale);
-        } else {
-            scaled = (graphPoints[selectedDataSet][i] / scale);
-
-        }
+        // Convert measurement using scaling
+        int scaled = (graphPoints[selectedDataSet][i] / scale);
+        // Convert output to pixel co-ordinate
         int dotYLocation = xOffSet - scaled;
+        // Space out our data points
         int currentX = (i * (240 / dataSetLength)) + 30;
+
         int color;
         int CO2 = graphPoints[selectedDataSet][i];
         if (CO2 <= 500) {
@@ -244,7 +238,7 @@ void drawGraph() {
         Serial.print("Scale: ");
         Serial.print(scale);
         Serial.print(" Plotting at (");
-        Serial.print(scaled);
+        Serial.print(currentX);
         Serial.print(",");
         Serial.print(dotYLocation - 30);
         Serial.print("): ");
@@ -260,7 +254,6 @@ void drawGraph() {
                          0x8C71);
         }
         tft.drawLine((i * 20) + 30, xOffSet + 10, (i * 20) + 30, 120, 0x8C71);
-
     }
 
     Serial.println();
@@ -297,6 +290,16 @@ void drawScales() {
         tft.setCursor(0, (xOffSet - ((i * (yMax / numYLabels)))));
         tft.print(i * (yMax / numYLabels) * scale);
     }
+    tft.setTextColor(ILI9341_WHITE);
+    tft.setCursor(90, xOffSet + 20);
+    tft.fillRect(90, xOffSet + 20, 120, 30, CUSTOM_DARK);
+    if (selectedDataSet == 0) {
+        tft.print("CO2 ");
+    } else {
+        tft.print("Temp ");
+    }
+    tft.print(GRAPH_INTERVAL_HOURS);
+    tft.print(" Hour Trend");
 }
 
 void onPressed() {
@@ -306,10 +309,15 @@ void onPressed() {
     } else {
         selectedDataSet = 0;
     }
+    drawGraph();
 }
 
 void calculateScale(int min, int max) {
     // Scales below 160 are less than 1. Deal with them first.
+    Serial.print("Min :");
+    Serial.println(min);
+    Serial.print("Max: ");
+    Serial.println(max);
 
     if (min < 50) {
         Serial.println("Scale set to 0.3");
@@ -327,15 +335,24 @@ void calculateScale(int min, int max) {
     }
 
     if (max) {
-        if ((max / scale) > 160) {
+        unsigned long maxLong = max;
+        unsigned long scaleCheck = 0;
+        if (std::isless(scale, 1.0)) {
+            Serial.println("Scale less than 1.");
+            scaleCheck = (maxLong * scale);
+        } else {
+            Serial.println("Scale larger than 1.");
+            scaleCheck = (maxLong / scale);
+        }
+        if (scaleCheck > 120) {
             Serial.println("Scale is too big. Decreasing.");
             if (scale < 1) {
-                while ((max / scale) > 160) {
+                while ((maxLong * scale) > 160) {
                     Serial.println(scale);
                     scale += 0.01;
                 }
             } else {
-                while ((max / scale) > 160) {
+                while ((maxLong / scale) > 160) {
                     Serial.println(scale);
                     scale++;
                 }
