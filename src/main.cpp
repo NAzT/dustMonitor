@@ -44,29 +44,9 @@ int lastCO2PPM = 0;
 int lastSecond = 0;
 
 
-// Graphing Stuff
-const int dataSetLength = 22;
-int graphPoints[5][dataSetLength];
-unsigned long timePoints[dataSetLength];
+EasyButton graphToggleButton(BUTTON_A);
+EasyButton optionsButton(BUTTON_B);
 
-volatile int selectedDataSet = 1;
-
-float scale = 2;
-int yMax = 160;
-int xOffSet = 280;
-int numYLabels = 8;
-
-void calculateScale(int, int);
-
-void drawGraph();
-
-void drawScales();
-
-void onPressed();
-
-void addMeasurement(int, int, unsigned long);
-
-EasyButton button(BUTTON_A);
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
 
@@ -88,27 +68,39 @@ void setup() {
 
     drawScales();
 
-    button.begin();
-    button.onPressed(onPressed);
+    graphToggleButton.begin();
+    optionsButton.begin();
+    graphToggleButton.onPressed(onPressed);
+    optionsButton.onPressed(optionsMenu);
+    drawButtons();
+
+}
+
+void drawButtons() {
+    tft.setTextSize(1);
+    tft.setTextColor(ILI9341_ORANGE);
+    tft.drawRect(0, 310, 240, 10, ILI9341_YELLOW);
+    tft.drawRect(0, 310, 80, 10, ILI9341_YELLOW);
+    tft.drawRect(80, 310, 80, 10, ILI9341_YELLOW);
+    tft.drawRect(160, 310, 80, 10, ILI9341_YELLOW);
+    tft.setCursor(10, 310);
+    tft.print("OPTIONS");
+    tft.setCursor(100, 310);
+    tft.print("GRAPH");
+    tft.setCursor(180, 310);
+    tft.print("RANGE");
 
 }
 
 void loop() {
-    button.read();
+    graphToggleButton.read();
+    optionsButton.read();
 
     if (millis() - getDataTimer >= 50) {
         int curSecond = ((millis() - uptime) / 1000);
 
-        // Update uptime first.
-        tft.setTextColor(ILI9341_WHITE);
-        if (lastSecond != curSecond) {
-            tft.setTextSize(1);
-            tft.fillRect(50, 307, 60, 15, CUSTOM_DARK);
-            tft.setCursor(5, 307);
-            tft.print("Uptime: ");
-            tft.print(curSecond);
-            tft.print("s");
-        }
+        //ticker(lastSecond, curSecond);
+
         int CO2 = 0;
         CO2 = myMHZ19.getCO2();
         int8_t Temp;
@@ -169,14 +161,14 @@ void loop() {
 
 void addMeasurement(int CO2, int Temp, unsigned long Time) {
     for (auto &graphPoint : graphPoints) {
-        for (int i = 0; i < dataSetLength; i++) {
+        for (int i = 0; i < DATASET_LENGTH; i++) {
             graphPoint[i] = graphPoint[i + 1];
         }
     }
-    graphPoints[0][dataSetLength - 1] = CO2;
-    graphPoints[1][dataSetLength - 1] = Temp;
+    graphPoints[0][DATASET_LENGTH - 1] = CO2;
+    graphPoints[1][DATASET_LENGTH - 1] = Temp;
 
-    timePoints[dataSetLength - 1] = Time;
+    timePoints[DATASET_LENGTH - 1] = Time;
 }
 
 void drawGraph() {
@@ -188,7 +180,7 @@ void drawGraph() {
     int lastY = 0;
     int min = 0, max = 0;
     Serial.println("Finding min and max.");
-    for (int j = 0; j < dataSetLength; j++) {
+    for (int j = 0; j < DATASET_LENGTH; j++) {
         if (!graphPoints[selectedDataSet][j]) {
             continue;
         }
@@ -205,7 +197,7 @@ void drawGraph() {
     if (oldScale != scale) {
         drawScales();
     }
-    for (int i = 0; i < dataSetLength; i++) {
+    for (int i = 0; i < DATASET_LENGTH; i++) {
         if (graphPoints[selectedDataSet][i] <= 0) {
             continue;
         }
@@ -214,12 +206,12 @@ void drawGraph() {
         // Convert output to pixel co-ordinate
         int dotYLocation = xOffSet - scaled;
         // Space out our data points
-        int currentX = (i * (240 / dataSetLength)) + 30;
+        int currentX = (i * (240 / DATASET_LENGTH)) + 30;
 
         int color;
         int CO2 = graphPoints[selectedDataSet][i];
         if (CO2 <= 500) {
-            color = ILI9341_BLUE;
+            color = ILI9341_CYAN;
         } else if (CO2 <= 1000) {
             color = ILI9341_GREEN;
         } else if (CO2 <= 1500) {
@@ -274,7 +266,7 @@ void drawScales() {
         int color = ILI9341_GREEN;
         int label = (i * (yMax / numYLabels) * scale);
         if (label <= 500) {
-            color = ILI9341_BLUE;
+            color = ILI9341_CYAN;
         } else if (label <= 1000) {
             color = ILI9341_GREEN;
         } else if (label <= 1500) {
@@ -290,9 +282,9 @@ void drawScales() {
         tft.setCursor(0, (xOffSet - ((i * (yMax / numYLabels)))));
         tft.print(i * (yMax / numYLabels) * scale);
     }
-    tft.setTextColor(ILI9341_WHITE);
-    tft.setCursor(90, xOffSet + 20);
-    tft.fillRect(90, xOffSet + 20, 120, 30, CUSTOM_DARK);
+    tft.setTextColor(ILI9341_ORANGE);
+    tft.setCursor(90, (xOffSet + 12));
+    tft.fillRect(90, (xOffSet+ 12), 120, 10, CUSTOM_DARK);
     if (selectedDataSet == 0) {
         tft.print("CO2 ");
     } else {
@@ -360,5 +352,28 @@ void calculateScale(int min, int max) {
         }
         Serial.print("Setting scale: ");
         Serial.println(scale);
+    }
+}
+
+// TODO find space on the screen.
+void ticker(int lastSecond, int curSecond) {
+    // Update uptime first.
+    tft.setTextColor(ILI9341_WHITE);
+    if (lastSecond != curSecond) {
+        tft.setTextSize(1);
+        tft.fillRect(50, 307, 60, 15, CUSTOM_DARK);
+        tft.setCursor(5, 307);
+        tft.print("Uptime: ");
+        tft.print(curSecond);
+        tft.print("s");
+    }
+}
+
+// TODO implement options menu.
+void optionsMenu() {
+    Serial.println("Button B has been pressed!");
+    tft.fillRect(0, 0, 240, 320, ILI9341_GREENYELLOW);
+    while(true) {
+        delay(1000);
     }
 }
