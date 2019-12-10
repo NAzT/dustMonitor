@@ -17,6 +17,7 @@
 #include "main.h"
 #include <EasyButton.h>
 #include <math.h>
+#include "optionsMenu.h"
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -374,6 +375,8 @@ void optionsMenu() {
     Serial.println("Button B has been pressed!");
     tft.fillRect(0, 0, 240, 320, ILI9341_GREENYELLOW);
     while(true) {
+        optionsMenu::drawOptionsButton(tft);
+        optionsMenu::drawOptionsMenu(tft);
         delay(1000);
     }
 }
