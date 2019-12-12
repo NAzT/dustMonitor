@@ -44,9 +44,12 @@ int lastTemperature = 0;
 int lastCO2PPM = 0;
 int lastSecond = 0;
 
+bool inSubMenu = false;
 
-EasyButton graphToggleButton(BUTTON_A);
-EasyButton optionsButton(BUTTON_B);
+
+EasyButton middleButton(BUTTON_A);
+EasyButton leftButton(BUTTON_B);
+EasyButton rightButton(BUTTON_C);
 
 
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
@@ -69,10 +72,11 @@ void setup() {
 
     drawScales();
 
-    graphToggleButton.begin();
-    optionsButton.begin();
-    graphToggleButton.onPressed(onPressed);
-    optionsButton.onPressed(optionsMenu);
+    middleButton.begin();
+    leftButton.begin();
+    rightButton.begin();
+    middleButton.onPressedFor(2000, onPressed);
+    leftButton.onPressedFor(2000, optionsMenu);
     drawButtons();
 
 }
@@ -94,8 +98,9 @@ void drawButtons() {
 }
 
 void loop() {
-    graphToggleButton.read();
-    optionsButton.read();
+    middleButton.read();
+    leftButton.read();
+    rightButton.read();
 
     if (millis() - getDataTimer >= 50) {
         int curSecond = ((millis() - uptime) / 1000);
@@ -297,6 +302,9 @@ void drawScales() {
 
 void onPressed() {
     Serial.println("Button has been pressed!");
+    if (inSubMenu) {
+        return;
+    }
     if (selectedDataSet == 0) {
         selectedDataSet = 1;
     } else {
@@ -372,11 +380,46 @@ void ticker(int lastSecond, int curSecond) {
 
 // TODO implement options menu.
 void optionsMenu() {
-    Serial.println("Button B has been pressed!");
-    tft.fillRect(0, 0, 240, 320, ILI9341_GREENYELLOW);
+    Serial.println("Entering options menu.");
+    inSubMenu = true;
+    tft.fillRect(0, 0, 240, 320, CUSTOM_DARK);
+    int selected =0;
+    int lastSelected  =0;
+    bool pressed = false;
+    optionsMenu::drawOptionsButton(tft);
+    optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, selected);
     while(true) {
-        optionsMenu::drawOptionsButton(tft);
-        optionsMenu::drawOptionsMenu(tft);
-        delay(1000);
+        leftButton.read();
+        middleButton.read();
+        rightButton.read();
+
+        if (selected != lastSelected) {
+            optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, selected);
+            lastSelected = selected;
+        }
+        if(middleButton.wasPressed()) {
+            pressed = true;
+            Serial.println("Middle button presssed");
+            if (selected == 4) {
+                break;
+            }
+            continue;
+        } else {
+            pressed = false;
+        }
+        if (leftButton.wasPressed()) {
+            selected > 0 ? selected-- : selected;
+            Serial.print("Left button pressed: ");
+            Serial.println(selected);
+            continue;
+        }
+        if (rightButton.wasPressed()) {
+            selected < 4 ? selected++ : selected;
+            Serial.print("Right button pressed: ");
+            Serial.println(selected);
+            continue;
+        }
+            delay(100);
     }
+    inSubMenu =false;
 }
