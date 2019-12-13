@@ -11,7 +11,7 @@ class optionsMenu {
 
 public:
     static void drawOptionsButton(Adafruit_ILI9341);
-    static void drawOptionsMenu(Adafruit_ILI9341, EasyButton, EasyButton, EasyButton, int);
+    static void drawOptionsMenu(Adafruit_ILI9341, EasyButton, EasyButton, EasyButton, bool, int, int, int[5]);
 };
 
 

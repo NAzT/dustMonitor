@@ -3,55 +3,20 @@
  */
 
 
-#include <ArduinoJson.h>
-#include <WiFi.h>
-#include <WiFiClientSecure.h>
-#include <SPI.h>
-#include <Adafruit_GFX.h>
 #include <Adafruit_ILI9341.h>
 #include <TimeLib.h>
 #include <Arduino.h>
 #include "MHZ19.h"
-#include <SoftwareSerial.h>
 #include "bitmap.c"
 #include "main.h"
 #include <EasyButton.h>
-#include <math.h>
 #include "optionsMenu.h"
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
-
-#define RX_PIN 35
-#define TX_PIN 33
-#define BAUDRATE 9600
-#define CUSTOM_DARK 0x3186
-#define TFT_CS   27
-#define TFT_DC   26
-#define TFT_MOSI 23
-#define TFT_CLK  18
-#define TFT_RST  5
-#define TFT_MISO 12
-
-#define BUTTON_A  37  //          37 CENTRE
-#define BUTTON_B  38 //          38 LEFT
-#define BUTTON_C  39 //          39 RIGHT
-
-unsigned long getDataTimer = 0;
-unsigned long graphIntervalTimer = 0;
-unsigned long uptime = millis();
-int lastTemperature = 0;
-int lastCO2PPM = 0;
-int lastSecond = 0;
-
-bool inSubMenu = false;
-
-
 EasyButton middleButton(BUTTON_A);
 EasyButton leftButton(BUTTON_B);
 EasyButton rightButton(BUTTON_C);
-
-
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
 
 void setup() {
@@ -61,6 +26,20 @@ void setup() {
     myMHZ19.autoCalibration();
     tft.begin();
     tft.setRotation(0);
+
+    drawHeader();
+    drawScales();
+
+    middleButton.begin();
+    leftButton.begin();
+    rightButton.begin();
+    middleButton.onPressed(cycleGraph);
+    leftButton.onPressed(openOptionsMenu);
+    rightButton.onPressed(cycleBacklight);
+    drawButtons(mainButtons);
+}
+
+void drawHeader() {
     tft.fillScreen(CUSTOM_DARK);
     tft.setTextColor(ILI9341_ORANGE);
     tft.setCursor(40, 20);
@@ -69,31 +48,21 @@ void setup() {
     tft.println("Air Monitor");
     tft.drawLine(40, 10, 240, 10, ILI9341_WHITE);
     tft.drawLine(0, 40, 240, 40, ILI9341_WHITE);
-
-    drawScales();
-
-    middleButton.begin();
-    leftButton.begin();
-    rightButton.begin();
-    middleButton.onPressedFor(2000, onPressed);
-    leftButton.onPressedFor(2000, optionsMenu);
-    drawButtons();
-
 }
 
-void drawButtons() {
+void drawButtons(char buttons[3][16]) {
     tft.setTextSize(1);
     tft.setTextColor(ILI9341_ORANGE);
-    tft.drawRect(0, 310, 240, 10, ILI9341_YELLOW);
-    tft.drawRect(0, 310, 80, 10, ILI9341_YELLOW);
-    tft.drawRect(80, 310, 80, 10, ILI9341_YELLOW);
-    tft.drawRect(160, 310, 80, 10, ILI9341_YELLOW);
+    tft.drawRect(0, 305, 240, 15, ILI9341_YELLOW);
+    tft.drawRect(0, 305, 80, 15, ILI9341_YELLOW);
+    tft.drawRect(80, 305, 80, 15, ILI9341_YELLOW);
+    tft.drawRect(160, 305, 80, 15, ILI9341_YELLOW);
     tft.setCursor(10, 310);
-    tft.print("OPTIONS");
+    tft.print(buttons[0]);
     tft.setCursor(100, 310);
-    tft.print("GRAPH");
+    tft.print(buttons[1]);
     tft.setCursor(180, 310);
-    tft.print("RANGE");
+    tft.print(buttons[2]);
 
 }
 
@@ -104,14 +73,11 @@ void loop() {
 
     if (millis() - getDataTimer >= 50) {
         int curSecond = ((millis() - uptime) / 1000);
-
         //ticker(lastSecond, curSecond);
-
         int CO2 = 0;
         CO2 = myMHZ19.getCO2();
         int8_t Temp;
         Temp = myMHZ19.getTemperature();
-
 
         // Lazy update the CO2
         if (lastCO2PPM != CO2) {
@@ -151,7 +117,7 @@ void loop() {
         }
 
         // Add a graph data point every 8 mins.
-        if ((millis() - graphIntervalTimer > GRAPH_INTERVAL) || graphIntervalTimer == 0) {
+        if ((millis() - graphIntervalTimer > optionsMatrix[0][currentOptions[0]]) || graphIntervalTimer == 0) {
             addMeasurement(CO2, Temp, millis());
             drawGraph();
             graphIntervalTimer = millis();
@@ -290,17 +256,17 @@ void drawScales() {
     }
     tft.setTextColor(ILI9341_ORANGE);
     tft.setCursor(90, (xOffSet + 12));
-    tft.fillRect(90, (xOffSet+ 12), 120, 10, CUSTOM_DARK);
+    tft.fillRect(90, (xOffSet + 12), 120, 10, CUSTOM_DARK);
     if (selectedDataSet == 0) {
         tft.print("CO2 ");
     } else {
         tft.print("Temp ");
     }
-    tft.print(GRAPH_INTERVAL_HOURS);
-    tft.print(" Hour Trend");
+    tft.print(menuSettingsFields[0][currentOptions[0]]);
+    tft.print(" Trend");
 }
 
-void onPressed() {
+void cycleGraph() {
     Serial.println("Button has been pressed!");
     if (inSubMenu) {
         return;
@@ -378,34 +344,40 @@ void ticker(int lastSecond, int curSecond) {
     }
 }
 
-// TODO implement options menu.
-void optionsMenu() {
+void openOptionsMenu() {
     Serial.println("Entering options menu.");
     inSubMenu = true;
     tft.fillRect(0, 0, 240, 320, CUSTOM_DARK);
-    int selected =0;
-    int lastSelected  =0;
-    bool pressed = false;
-    optionsMenu::drawOptionsButton(tft);
-    optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, selected);
-    while(true) {
+    int selected = 0;
+    int lastSelected = 0;
+    int menuSettings[5] = {0, 0, 0, 0, 0};
+
+    drawButtons(optionsButtons);
+    optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, true, selected, lastSelected,
+                                 menuSettings);
+    while (true) {
         leftButton.read();
         middleButton.read();
         rightButton.read();
 
         if (selected != lastSelected) {
-            optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, selected);
+            optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, false, selected, lastSelected,
+                                         menuSettings);
             lastSelected = selected;
         }
-        if(middleButton.wasPressed()) {
-            pressed = true;
-            Serial.println("Middle button presssed");
+        if (middleButton.wasPressed()) {
+            Serial.println("Middle button pressed");
             if (selected == 4) {
+                // exit
                 break;
+            } else {
+                optionsMatrix[selected][currentOptions[selected] + 1] != -1 ? currentOptions[selected]++
+                                                                            : currentOptions[selected] = 0;
+                menuSettings[selected] = currentOptions[selected];
+                optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, false, selected, lastSelected,
+                                             menuSettings);
             }
             continue;
-        } else {
-            pressed = false;
         }
         if (leftButton.wasPressed()) {
             selected > 0 ? selected-- : selected;
@@ -419,7 +391,18 @@ void optionsMenu() {
             Serial.println(selected);
             continue;
         }
-            delay(100);
+        delay(100);
     }
-    inSubMenu =false;
+    inSubMenu = false;
+    // Force lazy update
+    lastTemperature = lastCO2PPM = 0;
+    drawHeader();
+    drawScales();
+    drawGraph();
+    drawButtons(mainButtons);
+}
+
+void cycleBacklight() {
+    if (inSubMenu) { return; }
+    tft.writeCommand(0x51);
 }
