@@ -12,6 +12,7 @@
 #include "main.h"
 #include <EasyButton.h>
 #include "optionsMenu.h"
+#include <math.h>
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -45,54 +46,103 @@ void setup() {
 }
 
 void runSetup() {
+    drawHeader();
     tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
-    tft.setCursor(0, 10);
+    tft.setCursor(0, 50);
+    tft.setTextSize(1);
     tft.println("Reading setup from EEPROM");
+    int warmUpTime = optionsMatrix[1][config.conf.warmUpTime];
     if (config.loadConfig()) {
         tft.println("Setup successfully loaded.");
         tft.print("ThingSpeak Channel: ");
         tft.println(config.conf.thingSpeakChannel);
-        tft.println("ThingSpeak API Key: ");
+        tft.print("ThingSpeak API Key: ");
         tft.println(config.conf.thingSpeakKey);
-        
+
         tft.print("publishInterval: ");
         tft.println(config.conf.publishInterval);
-        
+
         // --> not actual values but options from the optionsMatrix
         tft.print("Graph Interval: ");
         tft.println(optionsMatrix[0][config.conf.graphInterval]);
         currentOptions[0] = config.conf.graphInterval;
-        
+
         tft.print("warmUpTime: ");
         tft.println(optionsMatrix[1][config.conf.warmUpTime]);
         currentOptions[1] = config.conf.warmUpTime;
-        
+
         tft.print("debug mode: ");
         tft.println(optionsMatrix[2][config.conf.debugMode]);
         currentOptions[2] = config.conf.debugMode;
-        
+
         tft.print("language: ");
         tft.println(optionsMatrix[3][config.conf.language]);
         currentOptions[3] = config.conf.language;
+        // setup warm up timer
+        warmUpTime = optionsMatrix[1][config.conf.warmUpTime];
+
     } else {
         tft.println("EEPROM could not load.");
     }
     getDataTimer = millis();
     config.printConfig();
+    tft.println("\nWarming up...");
+    int lastSecond = 0;
     while (true) {
-        middleButton.read();
-        if (middleButton.wasPressed()) {
-            tft.println("");
-            tft.println("Skipping sensor warm up.");
-            delay(500);
+        // TODO change to configured time
+        if ((millis() - getDataTimer) > optionsMatrix[1][config.conf.warmUpTime]) {
             break;
         }
-        if ((millis() - getDataTimer) < optionsMatrix[1][config.conf.warmUpTime]) {
-            delay(500);
-            tft.print(".");
-        } else {
-            break;
+
+        int cx = 240 / 2;
+        int cy = 240;
+        int r = 240 / 5;
+        float j = 2;
+        int lastX, lastY = 0;
+        for (float i = 0; i < 2*PI; i += 0.3) {
+            if (lastSecond != ((warmUpTime-(millis()-getDataTimer))/1000)) {
+                tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
+                tft.setCursor(120, 240);
+                tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
+                tft.print("s");
+            }
+            lastSecond = ((warmUpTime-(millis()-getDataTimer))/1000);
+            int x = cx + (r * cos(i));
+            int y = cy + (r * sin(i));
+            tft.fillCircle(x, y, j, ILI9341_ORANGE);
+            Serial.print("i: ");
+            Serial.print(i);
+            Serial.print("X: ");
+            Serial.print(x);
+            Serial.print(" Y: ");
+            Serial.println(y);
+            lastX = x;
+            lastY = y;
+            delay(50);
         }
+        for (float i = 0; i < 2*PI; i += 0.3) {
+            if (lastSecond != ((warmUpTime-(millis()-getDataTimer))/1000)) {
+                tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
+                tft.setCursor(120, 240);
+                tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
+                tft.print("s");
+            }
+            lastSecond = ((warmUpTime-(millis()-getDataTimer))/1000);
+            int x = cx + (r * cos(i));
+            int y = cy + (r * sin(i));
+            tft.fillCircle(x, y, j, CUSTOM_DARK);
+            Serial.print("i: ");
+            Serial.print(i);
+            Serial.print("X: ");
+            Serial.print(x);
+            Serial.print(" Y: ");
+            Serial.println(y);
+            lastX = x;
+            lastY = y;
+            delay(50);
+        }
+
+
     }
 }
 
@@ -108,6 +158,7 @@ void drawHeader() {
 }
 
 void drawButtons(char buttons[3][16]) {
+
     tft.setTextSize(1);
     tft.setTextColor(ILI9341_ORANGE);
     tft.drawRect(0, 305, 240, 15, ILI9341_YELLOW);
