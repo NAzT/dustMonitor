@@ -2,7 +2,8 @@
  * Copyright Wilyarti Howard - 2019
  */
 
-
+#include <EEPROM.h>
+#include "EEPROMFunctions.h"
 #include <Adafruit_ILI9341.h>
 #include <TimeLib.h>
 #include <Arduino.h>
@@ -19,6 +20,9 @@ EasyButton leftButton(BUTTON_B);
 EasyButton rightButton(BUTTON_C);
 Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
 
+EEPROMFunctions config;
+
+
 void setup() {
     Serial.begin(9600);
     mySerial.begin(BAUDRATE, SERIAL_8N1, RX_PIN, TX_PIN);
@@ -27,6 +31,7 @@ void setup() {
     tft.begin();
     tft.setRotation(0);
 
+    runSetup();
     drawHeader();
     drawScales();
 
@@ -37,6 +42,58 @@ void setup() {
     leftButton.onPressed(openOptionsMenu);
     rightButton.onPressed(cycleBacklight);
     drawButtons(mainButtons);
+}
+
+void runSetup() {
+    tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+    tft.setCursor(0, 10);
+    tft.println("Reading setup from EEPROM");
+    if (config.loadConfig()) {
+        tft.println("Setup successfully loaded.");
+        tft.print("ThingSpeak Channel: ");
+        tft.println(config.conf.thingSpeakChannel);
+        tft.println("ThingSpeak API Key: ");
+        tft.println(config.conf.thingSpeakKey);
+        
+        tft.print("publishInterval: ");
+        tft.println(config.conf.publishInterval);
+        
+        // --> not actual values but options from the optionsMatrix
+        tft.print("Graph Interval: ");
+        tft.println(optionsMatrix[0][config.conf.graphInterval]);
+        currentOptions[0] = config.conf.graphInterval;
+        
+        tft.print("warmUpTime: ");
+        tft.println(optionsMatrix[1][config.conf.warmUpTime]);
+        currentOptions[1] = config.conf.warmUpTime;
+        
+        tft.print("debug mode: ");
+        tft.println(optionsMatrix[2][config.conf.debugMode]);
+        currentOptions[2] = config.conf.debugMode;
+        
+        tft.print("language: ");
+        tft.println(optionsMatrix[3][config.conf.language]);
+        currentOptions[3] = config.conf.language;
+    } else {
+        tft.println("EEPROM could not load.");
+    }
+    getDataTimer = millis();
+    config.printConfig();
+    while (true) {
+        middleButton.read();
+        if (middleButton.wasPressed()) {
+            tft.println("");
+            tft.println("Skipping sensor warm up.");
+            delay(500);
+            break;
+        }
+        if ((millis() - getDataTimer) < optionsMatrix[1][config.conf.warmUpTime]) {
+            delay(500);
+            tft.print(".");
+        } else {
+            break;
+        }
+    }
 }
 
 void drawHeader() {
@@ -345,7 +402,9 @@ void ticker(int lastSecond, int curSecond) {
 }
 
 void openOptionsMenu() {
-    Serial.println("Entering options menu.");
+    if (inSubMenu) {
+        return;
+    }
     inSubMenu = true;
     tft.fillRect(0, 0, 240, 320, CUSTOM_DARK);
     int selected = 0;
@@ -369,6 +428,8 @@ void openOptionsMenu() {
             Serial.println("Middle button pressed");
             if (selected == 4) {
                 // exit
+                Serial.println("Saving to EEPROM and exiting.");
+                config.saveConfig();
                 break;
             } else {
                 optionsMatrix[selected][currentOptions[selected] + 1] != -1 ? currentOptions[selected]++
@@ -376,6 +437,23 @@ void openOptionsMenu() {
                 menuSettings[selected] = currentOptions[selected];
                 optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, false, selected, lastSelected,
                                              menuSettings);
+                switch (selected) {
+                    case 0:
+                        config.conf.graphInterval = currentOptions[selected]; // optionsMatrix[selected][currentOptions[selected]] --> store setting code rather than actual setting...
+                        break;
+                    case 1:
+                        config.conf.warmUpTime = currentOptions[selected];
+                        break;
+                    case 2:
+                        config.conf.debugMode = currentOptions[selected];
+                        break;
+                    case 3:
+                        config.conf.language = currentOptions[selected];
+                        break;
+                    default:
+                        Serial.println("No options selected.");
+                        config.saveConfig();
+                }
             }
             continue;
         }
@@ -404,5 +482,6 @@ void openOptionsMenu() {
 
 void cycleBacklight() {
     if (inSubMenu) { return; }
-    tft.writeCommand(0x51);
+    pinMode(22, OUTPUT);
+    digitalWrite(22, LOW);
 }

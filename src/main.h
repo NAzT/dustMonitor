@@ -33,6 +33,7 @@ void drawButtons(char[3][16]);
 void ticker(int,int);
 void openOptionsMenu();
 void cycleBacklight();
+void runSetup();
 
 unsigned long getDataTimer = 0;
 unsigned long graphIntervalTimer = 0;
@@ -51,26 +52,26 @@ unsigned long timePoints[DATASET_LENGTH];
 
 // All our options represented in numerical form.
 // to match the options in openOptionsMenu.cpp:
-char mainButtons[3][16] = {"OPTIONS", "GRAPH", "RANGE"};
+char mainButtons[3][16] = {"OPTIONS", "GRAPH", "FUNCTIONS"};
 char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 char menuSettingsFields[5][5][16]{
         {"8hrs",    "3hrs",  "1hr",  "30min", "10min"},
-        {"10min",   "3mins", "1min", "Off"},
+        {"3min",   "1min", "30s", "Off"},
         {"On",      "Off"},
         {"English", "Korean"},
         {" "},
 };
-int optionsMatrix[5][5] = {
+int optionsMatrix[5][6] = {
         {((8 * 60 * 60 * 1000) / DATASET_LENGTH),
                            ((3 * 60 * 60 * 1000) / DATASET_LENGTH),
                                             ((1 * 60 * 60 * 1000) / DATASET_LENGTH),
                                                          ((30 * 60 * 1000) / DATASET_LENGTH),
-                                                              ((10 * 60 * 1000) / DATASET_LENGTH)
+                                                              ((10 * 60 * 1000) / DATASET_LENGTH), -1
         },
-        {(10 * 60 * 1000), (3 * 60 * 1000), (60 * 1000), (0), -1},
-        {0,                1,               -1,          -1,  -1},
-        {0,                1,               -1,          -1,  -1},
-        {0,                1,               -1,          -1,  -1},
+        {(3 * 60 * 1000), (1 * 60 * 1000), (30 * 1000), (0), -1, -1},
+        {0,                1,               -1,          -1,  -1, -1},
+        {0,                1,               -1,          -1,  -1, -1},
+        {0,                1,               -1,          -1,  -1, -1},
 };
 int currentOptions[5]{0, 0, 0, 0, 0};
 
