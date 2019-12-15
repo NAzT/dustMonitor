@@ -2,7 +2,6 @@
  * Copyright Wilyarti Howard - 2019
  */
 
-#include <EEPROM.h>
 #include "EEPROMFunctions.h"
 #include <Adafruit_ILI9341.h>
 #include <TimeLib.h>
@@ -89,7 +88,6 @@ void runSetup() {
     tft.println("\nWarming up...");
     int lastSecond = 0;
     while (true) {
-        // TODO change to configured time
         if ((millis() - getDataTimer) > optionsMatrix[1][config.conf.warmUpTime]) {
             break;
         }
@@ -288,7 +286,7 @@ void drawGraph() {
         // Space out our data points
         int currentX = (i * (240 / DATASET_LENGTH)) + 30;
 
-        int color;
+        int color = ILI9341_WHITE;
         int CO2 = graphPoints[selectedDataSet][i];
         if (CO2 <= 500) {
             color = ILI9341_CYAN;
@@ -439,15 +437,15 @@ void calculateScale(int min, int max) {
 }
 
 // TODO find space on the screen.
-void ticker(int lastSecond, int curSecond) {
+void ticker(int lastSec, int curSec) {
     // Update uptime first.
     tft.setTextColor(ILI9341_WHITE);
-    if (lastSecond != curSecond) {
+    if (lastSec != curSec) {
         tft.setTextSize(1);
         tft.fillRect(50, 307, 60, 15, CUSTOM_DARK);
         tft.setCursor(5, 307);
         tft.print("Uptime: ");
-        tft.print(curSecond);
+        tft.print(curSec);
         tft.print("s");
     }
 }
