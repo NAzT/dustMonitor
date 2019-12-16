@@ -283,7 +283,6 @@ void debug() {
 }
 
 void drawGraph(int intervalID, int selectedDataSet) {
-    inSubMenu = true;
     Serial.println("Clearing graph area.");
     tft.fillRect(28, 120, 240, 170, CUSTOM_DARK);
     tft.drawLine(30, 120, 30, xOffSet + 10, ILI9341_WHITE);
@@ -364,10 +363,13 @@ void drawGraph(int intervalID, int selectedDataSet) {
     Serial.println("/////////////// DEBUG  ////////////////////");
     debug();
     Serial.println("/////////////// DEBUG  ////////////////////");
-    inSubMenu = false;
 }
 
 void drawScales() {
+    if(inSubMenu == true) {
+        return;
+    }
+    inSubMenu = true;
     if (scale >= 32) {
         scale = 31;
     }
@@ -375,7 +377,7 @@ void drawScales() {
     tft.setCursor(0, xOffSet + 20);
     Serial.print("Y Scale: ");
     Serial.println(scale);
-    tft.fillRect(0, 115, 240, (xOffSet - 115), CUSTOM_DARK);
+    tft.fillRect(0, 115, 30, (xOffSet - 115), CUSTOM_DARK);
     tft.drawLine(30, 120, 30, xOffSet + 10, ILI9341_WHITE);
     tft.drawLine(0, xOffSet + 10, 240, xOffSet + 10, ILI9341_WHITE);
     for (int i = 0; i < numYLabels; i++) {
@@ -408,12 +410,11 @@ void drawScales() {
     }
     tft.print(menuSettingsFields[0][currentOptions[0]]);
     tft.print(" Trend");
+    inSubMenu = false;
 }
 
 void cycleGraph() {
-    if (inSubMenu) {
-        return;
-    }
+    if(inSubMenu) { return; }
     if (graphDataSet == 0) {
         graphDataSet = 1;
     } else {
@@ -489,18 +490,17 @@ void ticker(int lastSec, int curSec) {
 }
 
 void cycleRange() {
-    inSubMenu = true;
+    if(inSubMenu) { return; }
     optionsMatrix[0][currentOptions[0] + 1] != -1 ? currentOptions[0]++
                                                   : currentOptions[0] = 0;
     drawScales();
     drawGraph(currentOptions[0], graphDataSet);
     config.conf.graphInterval = currentOptions[0];
     config.saveConfig();
-    inSubMenu = false;
 }
 
 void openOptionsMenu() {
-    if (inSubMenu) {
+    if (inSubMenu == true) {
         return;
     }
     inSubMenu = true;
@@ -512,10 +512,17 @@ void openOptionsMenu() {
     drawButtons(optionsButtons);
     optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, true, selected, lastSelected,
                                  menuSettings);
+    Serial.print("In options menu");
+    int menuCounter = millis();
     while (true) {
         leftButton.read();
         middleButton.read();
         rightButton.read();
+
+        // leave menu after 60s
+        if (millis() - menuCounter > (60*1000)){
+            break;
+        }
 
         if (selected != lastSelected) {
             optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, false, selected, lastSelected,
@@ -567,6 +574,7 @@ void openOptionsMenu() {
             Serial.println(selected);
             continue;
         }
+        Serial.print(".");
         delay(100);
     }
     inSubMenu = false;

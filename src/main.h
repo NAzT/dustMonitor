@@ -43,7 +43,7 @@ int lastTemperature = 0;
 int lastCO2PPM = 0;
 int lastSecond = 0;
 
-bool inSubMenu = false;
+volatile bool inSubMenu = false;
 
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
