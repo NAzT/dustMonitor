@@ -24,16 +24,16 @@ int xOffSet = 280;
 int numYLabels = 8;
 
 void calculateScale(int, int);
-void drawGraph();
+void drawGraph(int, int);
 void drawHeader();
 void drawScales();
 void cycleGraph();
-void addMeasurement(int, int, unsigned long);
+void addMeasurement(int, int, unsigned long, int);
 void drawButtons(char[3][16]);
 void ticker(int,int);
 void openOptionsMenu();
-void cycleBacklight();
 void runSetup();
+void cycleRange();
 
 unsigned long getDataTimer = 0;
 unsigned long graphIntervalTimer = 0;
@@ -46,13 +46,23 @@ bool inSubMenu = false;
 
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
-int graphPoints[5][DATASET_LENGTH];
+/*
+ * Graph Points is a 3D set of fields.
+ * = {
+ * {
+ *
+ * }
+ *
+ * }
+ */
+// graphPoints[interval][type][points]
+int graphPoints[5][5][DATASET_LENGTH];
 unsigned long timePoints[DATASET_LENGTH];
 
 
 // All our options represented in numerical form.
 // to match the options in openOptionsMenu.cpp:
-char mainButtons[3][16] = {"OPTIONS", "GRAPH", "FUNCTIONS"};
+char mainButtons[3][16] = {"OPTIONS", "GRAPH", "RANGE"};
 char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 char menuSettingsFields[5][5][16]{
         {"8hrs",    "3hrs",  "1hr",  "30min", "10min"},
@@ -61,12 +71,20 @@ char menuSettingsFields[5][5][16]{
         {"English", "Korean"},
         {" "},
 };
+char functionSettinsFields[5][1][16]{
+        {"Disable ABC"},
+        {"3min"},
+        {"On"},
+        {"English"},
+        {" "},
+};
+
 int optionsMatrix[5][6] = {
         {((8 * 60 * 60 * 1000) / DATASET_LENGTH),
                            ((3 * 60 * 60 * 1000) / DATASET_LENGTH),
                                             ((1 * 60 * 60 * 1000) / DATASET_LENGTH),
                                                          ((30 * 60 * 1000) / DATASET_LENGTH),
-                                                              ((10 * 60 * 1000) / DATASET_LENGTH), -1
+                                                          ((10 * 60 * 1000) / DATASET_LENGTH), -1
         },
         {(3 * 60 * 1000), (1 * 60 * 1000), (30 * 1000), (0), -1, -1},
         {0,                1,               -1,          -1,  -1, -1},
@@ -75,7 +93,7 @@ int optionsMatrix[5][6] = {
 };
 int currentOptions[5]{0, 0, 0, 0, 0};
 
-volatile int selectedDataSet = 1;
+volatile int graphDataSet = 1;
 
 #ifndef DUSTMONITOR_MAIN_H
 #define DUSTMONITOR_MAIN_H

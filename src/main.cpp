@@ -11,7 +11,7 @@
 #include "main.h"
 #include <EasyButton.h>
 #include "optionsMenu.h"
-#include <math.h>
+#include <cmath>
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -40,7 +40,7 @@ void setup() {
     rightButton.begin();
     middleButton.onPressed(cycleGraph);
     leftButton.onPressed(openOptionsMenu);
-    rightButton.onPressed(cycleBacklight);
+    rightButton.onPressed(cycleRange);
     drawButtons(mainButtons);
 }
 
@@ -97,14 +97,14 @@ void runSetup() {
         int r = 240 / 5;
         float j = 2;
         int lastX, lastY = 0;
-        for (float i = 0; i < 2*PI; i += 0.3) {
-            if (lastSecond != ((warmUpTime-(millis()-getDataTimer))/1000)) {
+        for (float i = 0; i < 2 * PI; i += 0.3) {
+            if (lastSecond != ((warmUpTime - (millis() - getDataTimer)) / 1000)) {
                 tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
                 tft.setCursor(120, 240);
                 tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
                 tft.print("s");
             }
-            lastSecond = ((warmUpTime-(millis()-getDataTimer))/1000);
+            lastSecond = ((warmUpTime - (millis() - getDataTimer)) / 1000);
             int x = cx + (r * cos(i));
             int y = cy + (r * sin(i));
             tft.fillCircle(x, y, j, ILI9341_ORANGE);
@@ -118,14 +118,14 @@ void runSetup() {
             lastY = y;
             delay(50);
         }
-        for (float i = 0; i < 2*PI; i += 0.3) {
-            if (lastSecond != ((warmUpTime-(millis()-getDataTimer))/1000)) {
+        for (float i = 0; i < 2 * PI; i += 0.3) {
+            if (lastSecond != ((warmUpTime - (millis() - getDataTimer)) / 1000)) {
                 tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
                 tft.setCursor(120, 240);
                 tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
                 tft.print("s");
             }
-            lastSecond = ((warmUpTime-(millis()-getDataTimer))/1000);
+            lastSecond = ((warmUpTime - (millis() - getDataTimer)) / 1000);
             int x = cx + (r * cos(i));
             int y = cy + (r * sin(i));
             tft.fillCircle(x, y, j, CUSTOM_DARK);
@@ -222,10 +222,29 @@ void loop() {
             tft.print(Temp);
         }
 
-        // Add a graph data point every 8 mins.
+        /*
+         * Add data to each data set. Regardless of if it is the current option.
+         * That way when the graph is cycled it displays a graph for each data set.
+         * This saves having to calculate time periods from a memory allocated set of points.
+         */
+        int timerCheck = (millis() - graphIntervalTimer);
+        if (timerCheck > optionsMatrix[0][0] || graphIntervalTimer == 0) {
+            addMeasurement(CO2, Temp, millis(), 0);
+        }
+        if (timerCheck > optionsMatrix[0][1] || graphIntervalTimer == 0) {
+            addMeasurement(CO2, Temp, millis(), 1);
+        }
+        if (timerCheck > optionsMatrix[0][2] || graphIntervalTimer == 0) {
+            addMeasurement(CO2, Temp, millis(), 2);
+        }
+        if (timerCheck > optionsMatrix[0][3] || graphIntervalTimer == 0) {
+            addMeasurement(CO2, Temp, millis(), 3);
+        }
+        if (timerCheck > optionsMatrix[0][4] || graphIntervalTimer == 0) {
+            addMeasurement(CO2, Temp, millis(), 4);
+        }
         if ((millis() - graphIntervalTimer > optionsMatrix[0][currentOptions[0]]) || graphIntervalTimer == 0) {
-            addMeasurement(CO2, Temp, millis());
-            drawGraph();
+            drawGraph(currentOptions[0], graphDataSet);
             graphIntervalTimer = millis();
         }
 
@@ -234,22 +253,22 @@ void loop() {
         lastSecond = curSecond;
         getDataTimer = millis();
     }
-
 }
 
-void addMeasurement(int CO2, int Temp, unsigned long Time) {
-    for (auto &graphPoint : graphPoints) {
+void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
+    for (int j = 0; j < 5; j++) {
         for (int i = 0; i < DATASET_LENGTH; i++) {
-            graphPoint[i] = graphPoint[i + 1];
+            graphPoints[intervalID][j][i] = graphPoints[intervalID][j][i + 1];
         }
     }
-    graphPoints[0][DATASET_LENGTH - 1] = CO2;
-    graphPoints[1][DATASET_LENGTH - 1] = Temp;
+    graphPoints[intervalID][0][DATASET_LENGTH - 1] = CO2;
+    graphPoints[intervalID][1][DATASET_LENGTH - 1] = Temp;
 
     timePoints[DATASET_LENGTH - 1] = Time;
 }
 
-void drawGraph() {
+void drawGraph(int intervalID, int selectedDataSet) {
+    inSubMenu = true;
     Serial.println("Clearing graph area.");
     tft.fillRect(28, 120, 240, 170, CUSTOM_DARK);
     tft.drawLine(30, 120, 30, xOffSet + 10, ILI9341_WHITE);
@@ -259,14 +278,14 @@ void drawGraph() {
     int min = 0, max = 0;
     Serial.println("Finding min and max.");
     for (int j = 0; j < DATASET_LENGTH; j++) {
-        if (!graphPoints[selectedDataSet][j]) {
+        if (!graphPoints[intervalID][selectedDataSet][j]) {
             continue;
         }
-        if (graphPoints[selectedDataSet][j] < min || min == 0) {
-            min = graphPoints[selectedDataSet][j];
+        if (graphPoints[intervalID][selectedDataSet][j] < min || min == 0) {
+            min = graphPoints[intervalID][selectedDataSet][j];
         }
-        if (graphPoints[selectedDataSet][j] > max || max == 0) {
-            max = graphPoints[selectedDataSet][j];
+        if (graphPoints[intervalID][selectedDataSet][j] > max || max == 0) {
+            max = graphPoints[intervalID][selectedDataSet][j];
         }
     }
     unsigned long oldScale = scale;
@@ -276,18 +295,18 @@ void drawGraph() {
         drawScales();
     }
     for (int i = 0; i < DATASET_LENGTH; i++) {
-        if (graphPoints[selectedDataSet][i] <= 0) {
+        if (graphPoints[intervalID][selectedDataSet][i] <= 0) {
             continue;
         }
         // Convert measurement using scaling
-        int scaled = (graphPoints[selectedDataSet][i] / scale);
+        int scaled = (graphPoints[intervalID][selectedDataSet][i] / scale);
         // Convert output to pixel co-ordinate
         int dotYLocation = xOffSet - scaled;
         // Space out our data points
         int currentX = (i * (240 / DATASET_LENGTH)) + 30;
 
         int color = ILI9341_WHITE;
-        int CO2 = graphPoints[selectedDataSet][i];
+        int CO2 = graphPoints[intervalID][selectedDataSet][i];
         if (CO2 <= 500) {
             color = ILI9341_CYAN;
         } else if (CO2 <= 1000) {
@@ -312,7 +331,7 @@ void drawGraph() {
         Serial.print(",");
         Serial.print(dotYLocation - 30);
         Serial.print("): ");
-        Serial.println(graphPoints[selectedDataSet][i]);
+        Serial.println(graphPoints[intervalID][selectedDataSet][i]);
 
         lastX = currentX;
         lastY = dotYLocation;
@@ -327,6 +346,7 @@ void drawGraph() {
     }
 
     Serial.println();
+    inSubMenu = false;
 }
 
 void drawScales() {
@@ -363,7 +383,7 @@ void drawScales() {
     tft.setTextColor(ILI9341_ORANGE);
     tft.setCursor(90, (xOffSet + 12));
     tft.fillRect(90, (xOffSet + 12), 120, 10, CUSTOM_DARK);
-    if (selectedDataSet == 0) {
+    if (graphDataSet == 0) {
         tft.print("CO2 ");
     } else {
         tft.print("Temp ");
@@ -373,16 +393,15 @@ void drawScales() {
 }
 
 void cycleGraph() {
-    Serial.println("Button has been pressed!");
     if (inSubMenu) {
         return;
     }
-    if (selectedDataSet == 0) {
-        selectedDataSet = 1;
+    if (graphDataSet == 0) {
+        graphDataSet = 1;
     } else {
-        selectedDataSet = 0;
+        graphDataSet = 0;
     }
-    drawGraph();
+    drawGraph(currentOptions[0], graphDataSet);
 }
 
 void calculateScale(int min, int max) {
@@ -448,6 +467,12 @@ void ticker(int lastSec, int curSec) {
         tft.print(curSec);
         tft.print("s");
     }
+}
+
+void cycleRange() {
+    optionsMatrix[0][currentOptions[0] + 1] != -1 ? currentOptions[0]++
+                                                  : currentOptions[0] = 0;
+    drawGraph(currentOptions[0], graphDataSet);
 }
 
 void openOptionsMenu() {
@@ -525,12 +550,6 @@ void openOptionsMenu() {
     lastTemperature = lastCO2PPM = 0;
     drawHeader();
     drawScales();
-    drawGraph();
+    drawGraph(currentOptions[0], graphDataSet);
     drawButtons(mainButtons);
-}
-
-void cycleBacklight() {
-    if (inSubMenu) { return; }
-    pinMode(22, OUTPUT);
-    digitalWrite(22, LOW);
 }
