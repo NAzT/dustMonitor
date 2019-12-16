@@ -1,24 +1,17 @@
-//
-// Created by undef on 11/12/19.
-//
+/*
+ * Copyright Wilyarti Howard - 2019
+ */
 
 #include <Adafruit_ILI9341.h>
 #include <EasyButton.h>
 #include "optionsMenu.h"
-
+#include "main.h"
 
 
 void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, EasyButton ButtonA, EasyButton ButtonB, EasyButton ButtonC, bool firstRun,
                                   int selected, int lastSelected, int menuSettings[5]) {
 
-    char menuItems[5][16] = {"Graph Range", "Warm Up", "Debug Mode", "Language", "Exit"};
-    char menuSettingsFields[5][5][16] {
-            {"8hrs", "3hrs", "1hr", "30min", "10min"},
-            {"10min", "3mins", "1min", "Off" },
-            {"On", "Off"},
-            {"English", "Korean"},
-            {" "},
-    };
+
     // Lazy update
     if (!firstRun) {
         tft.drawRect(0, selected * 60, 240, 60, ILI9341_YELLOW);

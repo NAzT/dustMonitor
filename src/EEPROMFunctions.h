@@ -1,6 +1,6 @@
-//
-// Created by undef on 14/12/19.
-//
+/*
+ * Copyright Wilyarti Howard - 2019
+ */
 
 #ifndef DUSTMONITOR_EEPROMFUNCTIONS_H
 #define DUSTMONITOR_EEPROMFUNCTIONS_H

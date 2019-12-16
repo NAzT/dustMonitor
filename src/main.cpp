@@ -52,29 +52,41 @@ void runSetup() {
     tft.println("Reading setup from EEPROM");
     int warmUpTime = optionsMatrix[1][config.conf.warmUpTime];
     if (config.loadConfig()) {
-        tft.println("Setup successfully loaded.");
         tft.print("ThingSpeak Channel: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(config.conf.thingSpeakChannel);
+        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
         tft.print("ThingSpeak API Key: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(config.conf.thingSpeakKey);
 
+        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
         tft.print("publishInterval: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(config.conf.publishInterval);
 
         // --> not actual values but options from the optionsMatrix
+        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
         tft.print("Graph Interval: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[0][config.conf.graphInterval]);
         currentOptions[0] = config.conf.graphInterval;
 
+        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
         tft.print("warmUpTime: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[1][config.conf.warmUpTime]);
         currentOptions[1] = config.conf.warmUpTime;
 
+        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
         tft.print("debug mode: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[2][config.conf.debugMode]);
         currentOptions[2] = config.conf.debugMode;
 
+        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
         tft.print("language: ");
+        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[3][config.conf.language]);
         currentOptions[3] = config.conf.language;
         // setup warm up timer
@@ -100,9 +112,9 @@ void runSetup() {
         for (float i = 0; i < 2 * PI; i += 0.3) {
             if (lastSecond != ((warmUpTime - (millis() - getDataTimer)) / 1000)) {
                 tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
-                tft.setCursor(120, 240);
+                tft.setCursor(110, 230);
                 tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
-                tft.print("s");
+                tft.print("s     ");
             }
             lastSecond = ((warmUpTime - (millis() - getDataTimer)) / 1000);
             int x = cx + (r * cos(i));
@@ -121,9 +133,9 @@ void runSetup() {
         for (float i = 0; i < 2 * PI; i += 0.3) {
             if (lastSecond != ((warmUpTime - (millis() - getDataTimer)) / 1000)) {
                 tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
-                tft.setCursor(120, 240);
+                tft.setCursor(110, 230);
                 tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
-                tft.print("s");
+                tft.print("s     ");
             }
             lastSecond = ((warmUpTime - (millis() - getDataTimer)) / 1000);
             int x = cx + (r * cos(i));

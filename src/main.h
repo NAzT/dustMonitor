@@ -1,6 +1,6 @@
-//
-// Created by undef on 9/12/19.
-//
+/*
+ * Copyright Wilyarti Howard - 2019
+ */
 
 
 #define RX_PIN 35
@@ -47,15 +47,7 @@ volatile bool inSubMenu = false;
 
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
-/*
- * Graph Points is a 3D set of fields.
- * = {
- * {
- *
- * }
- *
- * }
- */
+
 // graphPoints[interval][type][points]
 int graphPoints[5][5][DATASET_LENGTH];
 unsigned long timePoints[DATASET_LENGTH];
@@ -72,13 +64,7 @@ char menuSettingsFields[5][5][16]{
         {"English", "Korean"},
         {" "},
 };
-char functionSettinsFields[5][1][16]{
-        {"Disable ABC"},
-        {"3min"},
-        {"On"},
-        {"English"},
-        {" "},
-};
+char menuItems[5][16] = {"Graph Range", "Warm Up", "WiFi Mode", "Language", "Exit"};
 
 int optionsMatrix[5][6] = {
         {((8 * 60 * 60 * 1000) / DATASET_LENGTH),
@@ -94,7 +80,7 @@ int optionsMatrix[5][6] = {
 };
 volatile int currentOptions[5]{0, 0, 0, 0, 0};
 
-volatile int graphDataSet = 1;
+volatile int graphDataSet = 0;
 
 #ifndef DUSTMONITOR_MAIN_H
 #define DUSTMONITOR_MAIN_H
