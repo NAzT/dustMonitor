@@ -235,6 +235,10 @@ void loop() {
                 Serial.println(t);
                 addMeasurement(CO2, Temp, millis(), t);
                 graphIntervalTimer[t] = millis();
+                // This is the 't' you are looking for...
+                if (t == currentOptions[0]) {
+                    drawGraph(currentOptions[0], graphDataSet);
+                }
             }
         }
         // draw graph if we are in selected graph or we have just started.
@@ -490,6 +494,8 @@ void cycleRange() {
                                                   : currentOptions[0] = 0;
     drawScales();
     drawGraph(currentOptions[0], graphDataSet);
+    config.conf.graphInterval = currentOptions[0];
+    config.saveConfig();
     inSubMenu = false;
 }
 
