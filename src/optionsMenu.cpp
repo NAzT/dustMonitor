@@ -1,16 +1,10 @@
 /*
  * Copyright Wilyarti Howard - 2019
  */
-
-#include <Adafruit_ILI9341.h>
-#include <EasyButton.h>
 #include "optionsMenu.h"
-#include "main.h"
 
-
-void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, EasyButton ButtonA, EasyButton ButtonB, EasyButton ButtonC, bool firstRun,
+void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, EasyButton ButtonA, EasyButton ButtonB, EasyButton ButtonC,  char menuItems[5][16], char menuSettingsFields[5][5][16], bool firstRun,
                                   int selected, int lastSelected, int menuSettings[5]) {
-
 
     // Lazy update
     if (!firstRun) {

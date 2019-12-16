@@ -10,8 +10,8 @@
 #include "bitmap.c"
 #include "main.h"
 #include <EasyButton.h>
-#include "optionsMenu.h"
 #include <cmath>
+#include "optionsMenu.h"
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -522,7 +522,7 @@ void openOptionsMenu() {
     int menuSettings[5] = {0, 0, 0, 0, 0};
 
     drawButtons(optionsButtons);
-    optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, true, selected, lastSelected,
+    optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, menuItems, menuSettingsFields,true, selected, lastSelected,
                                  menuSettings);
     Serial.print("In options menu");
     int menuCounter = millis();
@@ -537,7 +537,7 @@ void openOptionsMenu() {
         }
 
         if (selected != lastSelected) {
-            optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, false, selected, lastSelected,
+            optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton,menuItems, menuSettingsFields, false, selected, lastSelected,
                                          menuSettings);
             lastSelected = selected;
         }
@@ -552,7 +552,7 @@ void openOptionsMenu() {
                 optionsMatrix[selected][currentOptions[selected] + 1] != -1 ? currentOptions[selected]++
                                                                             : currentOptions[selected] = 0;
                 menuSettings[selected] = currentOptions[selected];
-                optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, false, selected, lastSelected,
+                optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, menuItems, menuSettingsFields,false, selected, lastSelected,
                                              menuSettings);
                 switch (selected) {
                     case 0:
