@@ -34,9 +34,10 @@ void ticker(int,int);
 void openOptionsMenu();
 void runSetup();
 void cycleRange();
+void debug();
 
 unsigned long getDataTimer = 0;
-unsigned long graphIntervalTimer = 0;
+unsigned long graphIntervalTimer[5] = {0, 0, 0, 0,0};
 unsigned long uptime = millis();
 int lastTemperature = 0;
 int lastCO2PPM = 0;

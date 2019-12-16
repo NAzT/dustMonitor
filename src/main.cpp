@@ -227,25 +227,20 @@ void loop() {
          * That way when the graph is cycled it displays a graph for each data set.
          * This saves having to calculate time periods from a memory allocated set of points.
          */
-        int timerCheck = (millis() - graphIntervalTimer);
-        if (timerCheck > optionsMatrix[0][0] || graphIntervalTimer == 0) {
-            addMeasurement(CO2, Temp, millis(), 0);
+        // Cycle through intervals and add measurements if their individual timers are up.
+        for (int t = 0; t < 5; t++) {
+            int timerCheck = (millis() - graphIntervalTimer[t]);
+            if (timerCheck > optionsMatrix[0][t] || graphIntervalTimer[t] == 0) {
+                Serial.print("Adding data points for: ");
+                Serial.println(t);
+                addMeasurement(CO2, Temp, millis(), t);
+                graphIntervalTimer[t] = millis();
+            }
         }
-        if (timerCheck > optionsMatrix[0][1] || graphIntervalTimer == 0) {
-            addMeasurement(CO2, Temp, millis(), 1);
-        }
-        if (timerCheck > optionsMatrix[0][2] || graphIntervalTimer == 0) {
-            addMeasurement(CO2, Temp, millis(), 2);
-        }
-        if (timerCheck > optionsMatrix[0][3] || graphIntervalTimer == 0) {
-            addMeasurement(CO2, Temp, millis(), 3);
-        }
-        if (timerCheck > optionsMatrix[0][4] || graphIntervalTimer == 0) {
-            addMeasurement(CO2, Temp, millis(), 4);
-        }
-        if ((millis() - graphIntervalTimer > optionsMatrix[0][currentOptions[0]]) || graphIntervalTimer == 0) {
+        // draw graph if we are in selected graph or we have just started.
+        if ((millis() - graphIntervalTimer[currentOptions[0]] > optionsMatrix[0][currentOptions[0]]) || graphIntervalTimer[currentOptions[0]] == 0) {
+           // drawScales();
             drawGraph(currentOptions[0], graphDataSet);
-            graphIntervalTimer = millis();
         }
 
         lastTemperature = Temp;
@@ -263,8 +258,24 @@ void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
     }
     graphPoints[intervalID][0][DATASET_LENGTH - 1] = CO2;
     graphPoints[intervalID][1][DATASET_LENGTH - 1] = Temp;
-
     timePoints[DATASET_LENGTH - 1] = Time;
+}
+
+void debug() {
+    for (int intervalID = 0; intervalID < 5; intervalID++) {
+        Serial.print("Interval: ");
+        Serial.println(intervalID);
+        for (int j = 0; j < 5; j++) {
+            Serial.print("type ");
+            Serial.print(j);
+            Serial.print(": ");
+            for (int i = 0; i < DATASET_LENGTH; i++) {
+                Serial.print(graphPoints[intervalID][j][i]);
+                Serial.print(",");
+            }
+            Serial.println();
+        }
+    }
 }
 
 void drawGraph(int intervalID, int selectedDataSet) {
@@ -346,6 +357,9 @@ void drawGraph(int intervalID, int selectedDataSet) {
     }
 
     Serial.println();
+    Serial.println("/////////////// DEBUG  ////////////////////");
+    debug();
+    Serial.println("/////////////// DEBUG  ////////////////////");
     inSubMenu = false;
 }
 
@@ -401,6 +415,7 @@ void cycleGraph() {
     } else {
         graphDataSet = 0;
     }
+    drawScales();
     drawGraph(currentOptions[0], graphDataSet);
 }
 
@@ -470,9 +485,12 @@ void ticker(int lastSec, int curSec) {
 }
 
 void cycleRange() {
+    inSubMenu = true;
     optionsMatrix[0][currentOptions[0] + 1] != -1 ? currentOptions[0]++
                                                   : currentOptions[0] = 0;
+    drawScales();
     drawGraph(currentOptions[0], graphDataSet);
+    inSubMenu = false;
 }
 
 void openOptionsMenu() {
