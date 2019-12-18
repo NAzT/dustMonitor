@@ -60,6 +60,7 @@ int optionsMatrix[5][6] = {
         {0,                1,               -1,          -1,  -1, -1},
         {0,                1,               -1,          -1,  -1, -1},
 };
+
 // Volatile
 volatile int currentOptions[5]{0, 0, 0, 0, 0};
 volatile int graphDataSet = 0;
