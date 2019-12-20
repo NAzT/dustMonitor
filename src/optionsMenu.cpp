@@ -3,8 +3,9 @@
  */
 #include "optionsMenu.h"
 
-void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, EasyButton ButtonA, EasyButton ButtonB, EasyButton ButtonC,  char menuItems[5][16], char menuSettingsFields[5][5][16], bool firstRun,
-                                  int selected, int lastSelected, int menuSettings[5]) {
+void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, char menuItems[5][16], char menuSettingsFields[5][5][16],
+                                  bool firstRun,
+                                  int selected, int lastSelected, const int menuSettings[5]) {
 
     // Lazy update
     if (!firstRun) {

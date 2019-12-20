@@ -241,7 +241,7 @@ void loop() {
          */
         // Cycle through intervals and add measurements if their individual timers are up.
         for (int t = 0; t < 5; t++) {
-            int timerCheck = (millis() - graphIntervalTimer[t]);
+            unsigned long timerCheck = (millis() - graphIntervalTimer[t]);
             if (timerCheck > optionsMatrix[0][t] || graphIntervalTimer[t] == 0) {
                 Serial.print("Adding data points for: ");
                 Serial.println(t);
@@ -254,8 +254,9 @@ void loop() {
             }
         }
         // draw graph if we are in selected graph or we have just started.
-        if ((millis() - graphIntervalTimer[currentOptions[0]] > optionsMatrix[0][currentOptions[0]]) || graphIntervalTimer[currentOptions[0]] == 0) {
-           // drawScales();
+        if ((millis() - graphIntervalTimer[currentOptions[0]] > optionsMatrix[0][currentOptions[0]]) ||
+            graphIntervalTimer[currentOptions[0]] == 0) {
+            // drawScales();
             drawGraph(currentOptions[0], graphDataSet);
         }
 
@@ -325,7 +326,7 @@ void drawGraph(int intervalID, int selectedDataSet) {
             continue;
         }
         // Convert measurement using scaling
-        int scaled = (graphPoints[intervalID][selectedDataSet][i] / scale);
+        unsigned long scaled = (graphPoints[intervalID][selectedDataSet][i] / scale);
         // Convert output to pixel co-ordinate
         int dotYLocation = xOffSet - scaled;
         // Space out our data points
@@ -378,7 +379,7 @@ void drawGraph(int intervalID, int selectedDataSet) {
 }
 
 void drawScales() {
-    if(inSubMenu == true) {
+    if (inSubMenu != 0) {
         return;
     }
     inSubMenu = true;
@@ -426,7 +427,7 @@ void drawScales() {
 }
 
 void cycleGraph() {
-    if(inSubMenu) { return; }
+    if (inSubMenu) { return; }
     if (graphDataSet == 0) {
         graphDataSet = 1;
     } else {
@@ -445,10 +446,10 @@ void calculateScale(int min, int max) {
 
     if (min < 50) {
         Serial.println("Scale set to 0.3");
-        scale = 0.3;
+        scale = static_cast<unsigned long>(0.3);
     } else if (min < 100) {
         Serial.println("Scale set to 0.6");
-        scale = 0.6;
+        scale = static_cast<unsigned long>(0.6);
     } else if (min < 160) {
         Serial.println("Scale set to 1");
         scale = 1;
@@ -502,7 +503,7 @@ void ticker(int lastSec, int curSec) {
 }
 
 void cycleRange() {
-    if(inSubMenu) { return; }
+    if (inSubMenu) { return; }
     optionsMatrix[0][currentOptions[0] + 1] != -1 ? currentOptions[0]++
                                                   : currentOptions[0] = 0;
     drawScales();
@@ -512,7 +513,7 @@ void cycleRange() {
 }
 
 void openOptionsMenu() {
-    if (inSubMenu == true) {
+    if (inSubMenu != 0) {
         return;
     }
     inSubMenu = true;
@@ -522,7 +523,7 @@ void openOptionsMenu() {
     int menuSettings[5] = {0, 0, 0, 0, 0};
 
     drawButtons(optionsButtons);
-    optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, menuItems, menuSettingsFields,true, selected, lastSelected,
+    optionsMenu::drawOptionsMenu(tft, menuItems, menuSettingsFields, true, selected, lastSelected,
                                  menuSettings);
     Serial.print("In options menu");
     int menuCounter = millis();
@@ -532,12 +533,12 @@ void openOptionsMenu() {
         rightButton.read();
 
         // leave menu after 60s
-        if (millis() - menuCounter > (60*1000)){
+        if (millis() - menuCounter > (60 * 1000)) {
             break;
         }
 
         if (selected != lastSelected) {
-            optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton,menuItems, menuSettingsFields, false, selected, lastSelected,
+            optionsMenu::drawOptionsMenu(tft, menuItems, menuSettingsFields, false, selected, lastSelected,
                                          menuSettings);
             lastSelected = selected;
         }
@@ -552,7 +553,7 @@ void openOptionsMenu() {
                 optionsMatrix[selected][currentOptions[selected] + 1] != -1 ? currentOptions[selected]++
                                                                             : currentOptions[selected] = 0;
                 menuSettings[selected] = currentOptions[selected];
-                optionsMenu::drawOptionsMenu(tft, leftButton, middleButton, rightButton, menuItems, menuSettingsFields,false, selected, lastSelected,
+                optionsMenu::drawOptionsMenu(tft, menuItems, menuSettingsFields, false, selected, lastSelected,
                                              menuSettings);
                 switch (selected) {
                     case 0:

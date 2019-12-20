@@ -35,7 +35,7 @@ char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 // Variables
 unsigned long getDataTimer = 0;
 unsigned long graphIntervalTimer[5] = {0, 0, 0, 0,0};
-unsigned long uptime = millis();
+unsigned long uptime = 0;
 int lastTemperature = 0;
 int lastCO2PPM = 0;
 int lastSecond = 0;
@@ -66,7 +66,7 @@ volatile int currentOptions[5]{0, 0, 0, 0, 0};
 volatile int graphDataSet = 0;
 
 // Graphing variables
-float scale = 2;
+unsigned long scale = 2;
 int yMax = 160;
 int xOffSet = 280;
 int numYLabels = 8;
