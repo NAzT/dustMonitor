@@ -66,7 +66,7 @@ volatile int currentOptions[5]{0, 0, 0, 0, 0};
 volatile int graphDataSet = 0;
 
 // Graphing variables
-unsigned long scale = 2;
+float scale = 2;
 int yMax = 160;
 int xOffSet = 280;
 int numYLabels = 8;

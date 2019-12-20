@@ -326,7 +326,7 @@ void drawGraph(int intervalID, int selectedDataSet) {
             continue;
         }
         // Convert measurement using scaling
-        unsigned long scaled = (graphPoints[intervalID][selectedDataSet][i] / scale);
+        int scaled = (graphPoints[intervalID][selectedDataSet][i] / scale);
         // Convert output to pixel co-ordinate
         int dotYLocation = xOffSet - scaled;
         // Space out our data points
@@ -446,10 +446,10 @@ void calculateScale(int min, int max) {
 
     if (min < 50) {
         Serial.println("Scale set to 0.3");
-        scale = static_cast<unsigned long>(0.3);
+        scale = 0.3;
     } else if (min < 100) {
         Serial.println("Scale set to 0.6");
-        scale = static_cast<unsigned long>(0.6);
+        scale = 0.5;
     } else if (min < 160) {
         Serial.println("Scale set to 1");
         scale = 1;
