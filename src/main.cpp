@@ -1,17 +1,17 @@
 /*
  * Copyright Wilyarti Howard - 2019
  */
-
-#include "EEPROMFunctions.h"
 #include <Adafruit_ILI9341.h>
 #include <TimeLib.h>
 #include <Arduino.h>
+#include <EasyButton.h>
+#include <cmath>
 #include "MHZ19.h"
 #include "bitmap.c"
 #include "main.h"
-#include <EasyButton.h>
-#include <cmath>
 #include "optionsMenu.h"
+#include "EEPROMFunctions.h"
+
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
