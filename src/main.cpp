@@ -13,6 +13,7 @@
 #include "EEPROMFunctions.h"
 
 
+
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
 EasyButton middleButton(BUTTON_A);
@@ -22,6 +23,8 @@ Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_R
 
 EEPROMFunctions config;
 
+int16_t nTempOut;
+int16_t uHumOut;
 
 void setup() {
     Serial.begin(9600);
@@ -35,6 +38,7 @@ void setup() {
     drawHeader();
     drawScales();
 
+    // Setup buttons
     middleButton.begin();
     leftButton.begin();
     rightButton.begin();
@@ -42,6 +46,7 @@ void setup() {
     leftButton.onPressed(openOptionsMenu);
     rightButton.onPressed(cycleRange);
     drawButtons(mainButtons);
+
 }
 
 void runSetup() {
