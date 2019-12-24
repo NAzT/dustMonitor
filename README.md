@@ -8,6 +8,8 @@ Still under active development - WIP.
 1. BLE service to push live readings to a mobile app
 2. WiFi and ThingSpeak to push data to the cloud
 3. SD Card option to save data to disk
+4. Dust and VOC measurement
+5. Cheaper version with mobile app only
 
 Pull requests welcome!
 
