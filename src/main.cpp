@@ -11,8 +11,18 @@
 #include "main.h"
 #include "optionsMenu.h"
 #include "EEPROMFunctions.h"
+#include <Arduino.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
 
-
+// BLE
+BLEServer *pServer = NULL;
+BLECharacteristic *tempCharacteristic = NULL;
+BLECharacteristic *co2Characteristic = NULL;
+uint32_t bleTemperatureValue = 0;
+uint32_t bleCo2Value = 0;
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -26,7 +36,19 @@ EEPROMFunctions config;
 int16_t nTempOut;
 int16_t uHumOut;
 
+class MyServerCallbacks : public BLEServerCallbacks {
+    void onConnect(BLEServer *pServer) {
+        deviceConnected = true;
+        BLEDevice::startAdvertising();
+    };
+
+    void onDisconnect(BLEServer *pServer) {
+        deviceConnected = false;
+    }
+};
+
 void setup() {
+    esp_log_level_set("*", ESP_LOG_DEBUG);
     Serial.begin(9600);
     mySerial.begin(BAUDRATE, SERIAL_8N1, RX_PIN, TX_PIN);
     myMHZ19.begin(mySerial);
@@ -47,6 +69,167 @@ void setup() {
     rightButton.onPressed(cycleRange);
     drawButtons(mainButtons);
 
+    initBle();
+}
+
+void loop() {
+    // ************************************ BLE ********************************************************************* //
+    // Deal with BLE first
+    // Push BLE values first
+    // notify changed bleTemperatureValue
+    if (deviceConnected && (millis() - bleTimer >= 1000)) {
+        // update every second
+        Serial.println("Device connected. Pushing values.");
+        tempCharacteristic->setValue((uint8_t *) &bleTemperatureValue, 4);
+        co2Characteristic->setValue((uint8_t *) &bleCo2Value, 4);
+
+        tempCharacteristic->notify();
+        co2Characteristic->notify();
+        bleTimer = millis();
+
+    }
+    // disconnecting
+    if (!deviceConnected && oldDeviceConnected) {
+        delay(500); // give the bluetooth stack the chance to get things ready
+        pServer->startAdvertising(); // restart advertising
+        Serial.println("start advertising");
+        oldDeviceConnected = deviceConnected;
+    }
+    // connecting
+    if (deviceConnected && !oldDeviceConnected) {
+        // do stuff here on connecting
+        oldDeviceConnected = deviceConnected;
+    }
+    // ************************************ BLE ********************************************************************* //
+
+    middleButton.read();
+    leftButton.read();
+    rightButton.read();
+    if (millis() - getDataTimer >= 50) {
+        int curSecond = ((millis() - uptime) / 1000);
+        //ticker(lastSecond, curSecond);
+        int CO2 = 0;
+        CO2 = myMHZ19.getCO2();
+        int8_t Temp;
+        Temp = myMHZ19.getTemperature();
+
+        // BLE conversion
+        bleCo2Value = CO2;
+        bleTemperatureValue = Temp;
+
+        // Lazy update the CO2
+        if (lastCO2PPM != CO2) {
+            // CO2
+            int color = ILI9341_CYAN;
+            if (CO2 <= 500) {
+                color = ILI9341_BLUE;
+            } else if (CO2 <= 1000) {
+                color = ILI9341_GREEN;
+            } else if (CO2 <= 1500) {
+                color = ILI9341_YELLOW;
+            } else if (CO2 <= 2000) {
+                color = ILI9341_ORANGE;
+            } else if (CO2 <= 2500) {
+                color = ILI9341_RED;
+            } else if (CO2 <= 5000) {
+                color = ILI9341_PURPLE;
+            }
+            tft.setTextColor(color);
+            tft.fillRect(110, 65, 80, 20, CUSTOM_DARK);
+            tft.setCursor(5, 65);
+            tft.setTextSize(2);
+            tft.print("CO2 PPM: ");
+            tft.setCursor(110, 65);
+            tft.print(CO2);
+            tft.setTextColor(ILI9341_WHITE);
+        }
+        // Lazy update the Temp
+        if (lastTemperature != Temp) {
+            // Temp
+            tft.fillRect(110, 95, 80, 20, CUSTOM_DARK);
+            tft.setCursor(5, 95);
+            tft.setTextSize(2);
+            tft.print("Temp: ");
+            tft.setCursor(110, 95);
+            tft.print(Temp);
+        }
+
+        /*
+         * Add data to each data set. Regardless of if it is the current option.
+         * That way when the graph is cycled it displays a graph for each data set.
+         * This saves having to calculate time periods from a memory allocated set of points.
+         */
+        // Cycle through intervals and add measurements if their individual timers are up.
+        for (int t = 0; t < 5; t++) {
+            unsigned long timerCheck = (millis() - graphIntervalTimer[t]);
+            if (timerCheck > optionsMatrix[0][t] || graphIntervalTimer[t] == 0) {
+                Serial.print("Adding data points for: ");
+                Serial.println(t);
+                addMeasurement(CO2, Temp, millis(), t);
+                graphIntervalTimer[t] = millis();
+                // This is the 't' you are looking for...
+                if (t == currentOptions[0]) {
+                    drawGraph(currentOptions[0], graphDataSet);
+                }
+            }
+        }
+        // draw graph if we are in selected graph or we have just started.
+        if ((millis() - graphIntervalTimer[currentOptions[0]] > optionsMatrix[0][currentOptions[0]]) ||
+            graphIntervalTimer[currentOptions[0]] == 0) {
+            // drawScales();
+            drawGraph(currentOptions[0], graphDataSet);
+        }
+
+        lastTemperature = Temp;
+        lastCO2PPM = CO2;
+        lastSecond = curSecond;
+        getDataTimer = millis();
+    }
+}
+
+void initBle() {
+    // Create the BLE Device
+    BLEDevice::init("Air Quality Monitor");
+
+    // Create the BLE Server
+    pServer = BLEDevice::createServer();
+    pServer->setCallbacks(new MyServerCallbacks());
+
+    // Create the BLE Service
+    BLEService *pService = pServer->createService(BLEUUID((uint16_t) 0x181A));
+
+    // Create a BLE Characteristic
+    tempCharacteristic = pService->createCharacteristic(
+            BLEUUID((uint16_t) 0x2901),
+            BLECharacteristic::PROPERTY_READ |
+            BLECharacteristic::PROPERTY_WRITE |
+            BLECharacteristic::PROPERTY_NOTIFY |
+            BLECharacteristic::PROPERTY_INDICATE
+    );
+
+    co2Characteristic = pService->createCharacteristic(
+            BLEUUID((uint16_t) 0x2901),
+            BLECharacteristic::PROPERTY_READ |
+            BLECharacteristic::PROPERTY_WRITE |
+            BLECharacteristic::PROPERTY_NOTIFY |
+            BLECharacteristic::PROPERTY_INDICATE
+    );
+
+    // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
+    // Create a BLE Descriptor
+    tempCharacteristic->addDescriptor(new BLE2902());
+    co2Characteristic->addDescriptor(new BLE2902());
+
+    // Start the service
+    pService->start();
+
+    // Start advertising
+    BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
+    pAdvertising->addServiceUUID(BLEUUID((uint16_t) 0x181A));
+    pAdvertising->setScanResponse(false);
+    pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
+    BLEDevice::startAdvertising();
+    Serial.println("Waiting a client connection to notify...");
 }
 
 void runSetup() {
@@ -189,88 +372,6 @@ void drawButtons(char buttons[3][16]) {
 
 }
 
-void loop() {
-    middleButton.read();
-    leftButton.read();
-    rightButton.read();
-
-    if (millis() - getDataTimer >= 50) {
-        int curSecond = ((millis() - uptime) / 1000);
-        //ticker(lastSecond, curSecond);
-        int CO2 = 0;
-        CO2 = myMHZ19.getCO2();
-        int8_t Temp;
-        Temp = myMHZ19.getTemperature();
-
-        // Lazy update the CO2
-        if (lastCO2PPM != CO2) {
-            // CO2
-            int color = ILI9341_CYAN;
-            if (CO2 <= 500) {
-                color = ILI9341_BLUE;
-            } else if (CO2 <= 1000) {
-                color = ILI9341_GREEN;
-            } else if (CO2 <= 1500) {
-                color = ILI9341_YELLOW;
-            } else if (CO2 <= 2000) {
-                color = ILI9341_ORANGE;
-            } else if (CO2 <= 2500) {
-                color = ILI9341_RED;
-            } else if (CO2 <= 5000) {
-                color = ILI9341_PURPLE;
-            }
-            tft.setTextColor(color);
-            tft.fillRect(110, 65, 80, 20, CUSTOM_DARK);
-            tft.setCursor(5, 65);
-            tft.setTextSize(2);
-            tft.print("CO2 PPM: ");
-            tft.setCursor(110, 65);
-            tft.print(CO2);
-            tft.setTextColor(ILI9341_WHITE);
-        }
-        // Lazy update the Temp
-        if (lastTemperature != Temp) {
-            // Temp
-            tft.fillRect(110, 95, 80, 20, CUSTOM_DARK);
-            tft.setCursor(5, 95);
-            tft.setTextSize(2);
-            tft.print("Temp: ");
-            tft.setCursor(110, 95);
-            tft.print(Temp);
-        }
-
-        /*
-         * Add data to each data set. Regardless of if it is the current option.
-         * That way when the graph is cycled it displays a graph for each data set.
-         * This saves having to calculate time periods from a memory allocated set of points.
-         */
-        // Cycle through intervals and add measurements if their individual timers are up.
-        for (int t = 0; t < 5; t++) {
-            unsigned long timerCheck = (millis() - graphIntervalTimer[t]);
-            if (timerCheck > optionsMatrix[0][t] || graphIntervalTimer[t] == 0) {
-                Serial.print("Adding data points for: ");
-                Serial.println(t);
-                addMeasurement(CO2, Temp, millis(), t);
-                graphIntervalTimer[t] = millis();
-                // This is the 't' you are looking for...
-                if (t == currentOptions[0]) {
-                    drawGraph(currentOptions[0], graphDataSet);
-                }
-            }
-        }
-        // draw graph if we are in selected graph or we have just started.
-        if ((millis() - graphIntervalTimer[currentOptions[0]] > optionsMatrix[0][currentOptions[0]]) ||
-            graphIntervalTimer[currentOptions[0]] == 0) {
-            // drawScales();
-            drawGraph(currentOptions[0], graphDataSet);
-        }
-
-        lastTemperature = Temp;
-        lastCO2PPM = CO2;
-        lastSecond = curSecond;
-        getDataTimer = millis();
-    }
-}
 
 void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
     for (int j = 0; j < 5; j++) {

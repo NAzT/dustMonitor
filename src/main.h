@@ -18,6 +18,12 @@
 #define BUTTON_B  38 //          38 LEFT
 #define BUTTON_C  39 //          39 RIGHT
 
+// BLE
+bool deviceConnected = false;
+bool oldDeviceConnected = false;
+
+
+
 // Menu items
 // All our options represented in numerical form.
 // to match the options in openOptionsMenu.cpp:
@@ -34,6 +40,7 @@ char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 
 // Variables
 unsigned long getDataTimer = 0;
+unsigned long bleTimer = 0;
 unsigned long graphIntervalTimer[5] = {0, 0, 0, 0,0};
 unsigned long uptime = 0;
 int lastTemperature = 0;
@@ -84,6 +91,7 @@ void openOptionsMenu();
 void runSetup();
 void cycleRange();
 void debug();
+void initBle();
 
 
 #ifndef DUSTMONITOR_MAIN_H
