@@ -16,13 +16,16 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
+#include <string>
 
 // BLE
 BLEServer *pServer = NULL;
 BLECharacteristic *tempCharacteristic = NULL;
 BLECharacteristic *co2Characteristic = NULL;
-uint32_t bleTemperatureValue = 0;
-uint32_t bleCo2Value = 0;
+float bleTemperatureValue = 0;
+float bleCo2Value = 0;
+char  bleTemperatureString[16];
+char bleCo2String[16];
 
 MHZ19 myMHZ19;
 HardwareSerial mySerial(1);
@@ -80,8 +83,15 @@ void loop() {
     if (deviceConnected && (millis() - bleTimer >= 1000)) {
         // update every second
         Serial.println("Device connected. Pushing values.");
-        tempCharacteristic->setValue((uint8_t *) &bleTemperatureValue, 4);
-        co2Characteristic->setValue((uint8_t *) &bleCo2Value, 4);
+        Serial.print("Temperature: ");
+        Serial.println(bleTemperatureValue);
+        Serial.print("Co2: ");
+        Serial.println(bleCo2Value);
+
+        sprintf(bleTemperatureString,"%4.2f",bleTemperatureValue);
+        sprintf(bleCo2String,"%4.2f",bleCo2Value);
+        tempCharacteristic->setValue( bleTemperatureString );
+        co2Characteristic->setValue(bleCo2String  );
 
         tempCharacteristic->notify();
         co2Characteristic->notify();
@@ -114,8 +124,8 @@ void loop() {
         Temp = myMHZ19.getTemperature();
 
         // BLE conversion
-        bleCo2Value = CO2;
-        bleTemperatureValue = Temp;
+        bleCo2Value = myMHZ19.getCO2();
+        bleTemperatureValue = myMHZ19.getTemperature();
 
         // Lazy update the CO2
         if (lastCO2PPM != CO2) {
@@ -196,11 +206,11 @@ void initBle() {
     pServer->setCallbacks(new MyServerCallbacks());
 
     // Create the BLE Service
-    BLEService *pService = pServer->createService(BLEUUID((uint16_t) 0x181A));
+    BLEService *pService = pServer->createService(BLEUUID("db101875-d9c4-4c10-b856-fad3a581a6ea"));
 
     // Create a BLE Characteristic
     tempCharacteristic = pService->createCharacteristic(
-            BLEUUID((uint16_t) 0x2901),
+            BLEUUID("06576524-99f9-4dc5-b6ea-c66dc433e6f2"),
             BLECharacteristic::PROPERTY_READ |
             BLECharacteristic::PROPERTY_WRITE |
             BLECharacteristic::PROPERTY_NOTIFY |
@@ -208,7 +218,7 @@ void initBle() {
     );
 
     co2Characteristic = pService->createCharacteristic(
-            BLEUUID((uint16_t) 0x2901),
+            BLEUUID("4e1fb0da-dc91-43ea-9b6d-77f699ddbbed"),
             BLECharacteristic::PROPERTY_READ |
             BLECharacteristic::PROPERTY_WRITE |
             BLECharacteristic::PROPERTY_NOTIFY |
@@ -220,12 +230,15 @@ void initBle() {
     tempCharacteristic->addDescriptor(new BLE2902());
     co2Characteristic->addDescriptor(new BLE2902());
 
+    tempCharacteristic->setValue("0.0");
+    co2Characteristic->setValue("0.0");
+
     // Start the service
     pService->start();
 
     // Start advertising
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->addServiceUUID(BLEUUID((uint16_t) 0x181A));
+    pAdvertising->addServiceUUID(BLEUUID("db101875-d9c4-4c10-b856-fad3a581a6ea"));
     pAdvertising->setScanResponse(false);
     pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
     BLEDevice::startAdvertising();
