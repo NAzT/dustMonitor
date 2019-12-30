@@ -22,6 +22,10 @@
 bool deviceConnected = false;
 bool oldDeviceConnected = false;
 
+char BLE_SERVICE_ID[37] = "db101875-d9c4-4c10-b856-fad3a581a6ea";
+char BLE_TEMP_CHARACTERISTIC[37] = "06576524-99f9-4dc5-b6ea-c66dc433e6f2";
+char BLE_HUMIDITY_CHARACTERISTIC[37] = "4e1fb0da-dc91-43ea-9b6d-77f699ddbbed";
+char BLE_GRAPH_CHARACTERISTIC[37] = "900dd909-eb3a-4774-bcdb-b10d8dd2ae28";
 
 
 // Menu items
@@ -41,7 +45,9 @@ char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 // Variables
 unsigned long getDataTimer = 0;
 unsigned long bleTimer = 0;
-unsigned long graphIntervalTimer[5] = {0, 0, 0, 0,0};
+unsigned long bleGraphTimer = 0;
+
+unsigned long graphIntervalTimer[5] = {0, 0, 0, 0, 0};
 unsigned long uptime = 0;
 int lastTemperature = 0;
 int lastCO2PPM = 0;
@@ -51,21 +57,30 @@ volatile bool inSubMenu = false;
 
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
+const int BLE_DATASETLENGTH = 1440;
+
+// BLE mobile graph
+int bleGraphInterval = 1000 * 60; // 60 seconds
+unsigned long bleGraphDatasetTimer = 0;
+// 0 = Temp
+// 1 = CO2
+float bleGraphPoints[3][BLE_DATASETLENGTH]; // 1 data point every minute for 24 hours
+unsigned long bleTimePoints[BLE_DATASETLENGTH];
 
 // graphPoints[interval][type][points]
 int graphPoints[5][5][DATASET_LENGTH];
 unsigned long timePoints[DATASET_LENGTH];
 int optionsMatrix[5][6] = {
         {((8 * 60 * 60 * 1000) / DATASET_LENGTH),
-                           ((3 * 60 * 60 * 1000) / DATASET_LENGTH),
-                                            ((1 * 60 * 60 * 1000) / DATASET_LENGTH),
-                                                         ((30 * 60 * 1000) / DATASET_LENGTH),
-                                                              ((10 * 60 * 1000) / DATASET_LENGTH), -1
+                          ((3 * 60 * 60 * 1000) / DATASET_LENGTH),
+                                           ((1 * 60 * 60 * 1000) / DATASET_LENGTH),
+                                                        ((30 * 60 * 1000) / DATASET_LENGTH),
+                                                             ((10 * 60 * 1000) / DATASET_LENGTH), -1
         },
-        {(3 * 60 * 1000), (1 * 60 * 1000), (30 * 1000), (0), -1, -1},
-        {0,                1,               -1,          -1,  -1, -1},
-        {0,                1,               -1,          -1,  -1, -1},
-        {0,                1,               -1,          -1,  -1, -1},
+        {(3 * 60 * 1000), (1 * 60 * 1000), (30 * 1000), (0), -1,                                  -1},
+        {0,               1,               -1,          -1,  -1,                                  -1},
+        {0,               1,               -1,          -1,  -1,                                  -1},
+        {0,               1,               -1,          -1,  -1,                                  -1},
 };
 
 // Volatile
@@ -80,19 +95,32 @@ int numYLabels = 8;
 
 // Functions
 void calculateScale(int, int);
+
 void drawGraph(int, int);
+
 void drawHeader();
+
 void drawScales();
+
 void cycleGraph();
+
 void addMeasurement(int, int, unsigned long, int);
+
 void drawButtons(char[3][16]);
-void ticker(int,int);
+
+void ticker(int, int);
+
 void openOptionsMenu();
+
 void runSetup();
+
 void cycleRange();
+
 void debug();
+
 void initBle();
 
+void addBleGraphMeasurement(float, float, unsigned long);
 
 #ifndef DUSTMONITOR_MAIN_H
 #define DUSTMONITOR_MAIN_H

@@ -17,14 +17,16 @@
 #include <BLEUtils.h>
 #include <BLE2902.h>
 #include <string>
+#include <ArduinoJson.h>
 
 // BLE
 BLEServer *pServer = NULL;
 BLECharacteristic *tempCharacteristic = NULL;
 BLECharacteristic *co2Characteristic = NULL;
+BLECharacteristic *graphCharacteristic = NULL;
 float bleTemperatureValue = 0;
 float bleCo2Value = 0;
-char  bleTemperatureString[16];
+char bleTemperatureString[16];
 char bleCo2String[16];
 
 MHZ19 myMHZ19;
@@ -88,14 +90,70 @@ void loop() {
         Serial.print("Co2: ");
         Serial.println(bleCo2Value);
 
-        sprintf(bleTemperatureString,"%4.2f",bleTemperatureValue);
-        sprintf(bleCo2String,"%4.2f",bleCo2Value);
-        tempCharacteristic->setValue( bleTemperatureString );
-        co2Characteristic->setValue(bleCo2String  );
+        sprintf(bleTemperatureString, "%4.2f", bleTemperatureValue);
+        sprintf(bleCo2String, "%4.2f", bleCo2Value);
+        tempCharacteristic->setValue(bleTemperatureString);
+        co2Characteristic->setValue(bleCo2String);
 
         tempCharacteristic->notify();
         co2Characteristic->notify();
         bleTimer = millis();
+
+    }
+    if (deviceConnected && (millis() - bleGraphTimer >= 60000)) {
+        // update every second
+        Serial.println("Device connected. Pushing all the values.");
+
+
+        char t[16];
+        char c[16];
+        char tm[16];
+        // TODO make a more efficient way to xfer data
+        for (int i = 0; i < BLE_DATASETLENGTH; i += 5) {
+            char chunk[512];
+            const int capacity = JSON_ARRAY_SIZE(5) + 5 * JSON_OBJECT_SIZE(3);
+            StaticJsonDocument<capacity> doc;
+            sprintf(t, "%4.2f", bleGraphPoints[0][i]);
+            sprintf(c, "%4.2f", bleGraphPoints[0][i]);
+            sprintf(tm, "%4.2f", bleTimePoints[i]);
+            JsonObject metadata = doc.createNestedObject("metadata");
+            metadata["time"] = millis();
+
+            JsonArray graphPoints = doc.createNestedArray("graphPoints");
+            JsonObject graphPoint1 = graphPoints.createNestedObject();
+            graphPoint1["CO2"] = c;
+            graphPoint1["Temp"] = t;
+            graphPoint1["Millis"] = tm;
+
+            // TODO fix the below, make it dynamic
+
+            JsonObject graphPoint2 = graphPoints.createNestedObject();
+            graphPoint2["CO2"] = c;
+            graphPoint2["Temp"] = t;
+            graphPoint2["Millis"] = tm;
+
+            JsonObject graphPoint3 = graphPoints.createNestedObject();
+            graphPoint3["CO2"] = c;
+            graphPoint3["Temp"] = t;
+            graphPoint3["Millis"] = tm;
+
+            JsonObject graphPoint4 = graphPoints.createNestedObject();
+            graphPoint4["CO2"] = c;
+            graphPoint4["Temp"] = t;
+            graphPoint4["Millis"] = tm;
+
+            JsonObject graphPoint5 = graphPoints.createNestedObject();
+            graphPoint5["CO2"] = c;
+            graphPoint5["Temp"] = t;
+            graphPoint5["Millis"] = tm;
+
+            serializeJson(doc, chunk);
+            Serial.println(chunk);
+            graphCharacteristic->setValue(chunk);
+            graphCharacteristic->notify();
+            delay(10);
+        }
+        bleGraphTimer = millis();
 
     }
     // disconnecting
@@ -183,6 +241,11 @@ void loop() {
                 }
             }
         }
+        unsigned long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
+        if (bleGraphTimerCheck > bleGraphInterval) {
+            addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
+            bleGraphDatasetTimer = millis(); // reset timer
+        }
         // draw graph if we are in selected graph or we have just started.
         if ((millis() - graphIntervalTimer[currentOptions[0]] > optionsMatrix[0][currentOptions[0]]) ||
             graphIntervalTimer[currentOptions[0]] == 0) {
@@ -206,11 +269,11 @@ void initBle() {
     pServer->setCallbacks(new MyServerCallbacks());
 
     // Create the BLE Service
-    BLEService *pService = pServer->createService(BLEUUID("db101875-d9c4-4c10-b856-fad3a581a6ea"));
+    BLEService *pService = pServer->createService(BLEUUID(BLE_SERVICE_ID));
 
     // Create a BLE Characteristic
     tempCharacteristic = pService->createCharacteristic(
-            BLEUUID("06576524-99f9-4dc5-b6ea-c66dc433e6f2"),
+            BLEUUID(BLE_TEMP_CHARACTERISTIC),
             BLECharacteristic::PROPERTY_READ |
             BLECharacteristic::PROPERTY_WRITE |
             BLECharacteristic::PROPERTY_NOTIFY |
@@ -218,7 +281,15 @@ void initBle() {
     );
 
     co2Characteristic = pService->createCharacteristic(
-            BLEUUID("4e1fb0da-dc91-43ea-9b6d-77f699ddbbed"),
+            BLEUUID(BLE_HUMIDITY_CHARACTERISTIC),
+            BLECharacteristic::PROPERTY_READ |
+            BLECharacteristic::PROPERTY_WRITE |
+            BLECharacteristic::PROPERTY_NOTIFY |
+            BLECharacteristic::PROPERTY_INDICATE
+    );
+
+    graphCharacteristic = pService->createCharacteristic(
+            BLEUUID(BLE_GRAPH_CHARACTERISTIC),
             BLECharacteristic::PROPERTY_READ |
             BLECharacteristic::PROPERTY_WRITE |
             BLECharacteristic::PROPERTY_NOTIFY |
@@ -229,16 +300,17 @@ void initBle() {
     // Create a BLE Descriptor
     tempCharacteristic->addDescriptor(new BLE2902());
     co2Characteristic->addDescriptor(new BLE2902());
+    graphCharacteristic->addDescriptor(new BLE2902());
 
     tempCharacteristic->setValue("0.0");
     co2Characteristic->setValue("0.0");
-
+    graphCharacteristic->setValue("0.0");
     // Start the service
     pService->start();
 
     // Start advertising
     BLEAdvertising *pAdvertising = BLEDevice::getAdvertising();
-    pAdvertising->addServiceUUID(BLEUUID("db101875-d9c4-4c10-b856-fad3a581a6ea"));
+    pAdvertising->addServiceUUID(BLEUUID(BLE_SERVICE_ID));
     pAdvertising->setScanResponse(false);
     pAdvertising->setMinPreferred(0x0);  // set value to 0x00 to not advertise this parameter
     BLEDevice::startAdvertising();
@@ -395,6 +467,18 @@ void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
     graphPoints[intervalID][0][DATASET_LENGTH - 1] = CO2;
     graphPoints[intervalID][1][DATASET_LENGTH - 1] = Temp;
     timePoints[DATASET_LENGTH - 1] = Time;
+}
+
+void addBleGraphMeasurement(float CO2, float Temp, unsigned long Time) {
+    for (int j = 0; j < 3; j++) {
+        for (int i = 0; i < BLE_DATASETLENGTH; i++) {
+            bleGraphPoints[j][i] = bleGraphPoints[j][i + 1];
+        }
+    }
+    bleGraphPoints[0][BLE_DATASETLENGTH - 1] = CO2;
+    bleGraphPoints[1][BLE_DATASETLENGTH - 1] = Temp;
+    // TODO dust ppm etc
+    bleTimePoints[BLE_DATASETLENGTH - 1] = Time;
 }
 
 void debug() {
