@@ -100,9 +100,10 @@ void loop() {
         bleTimer = millis();
 
     }
-    if (deviceConnected && (millis() - bleGraphTimer >= 60000)) {
+    if (deviceConnected && (millis() - bleGraphTimer >= 10000)) {
         // update every second
         Serial.println("Device connected. Pushing all the values.");
+       // char testXfer[512] = "Lorem ipsum dr sit amet, consectetur adipiscing elit. Etiam id turpis sodales, euismod mauris vel, iaculis augue. Aenean feugiat vitae nisi eget egestas. Praesent gravida elit eu est dictum molestie. Donec et scelerisque quam. Morbi vel orci pretium, volutpat dui sed, scelerisque arcu. Pellentesque porttitor cursus turpis, rutrum maximus dolor lobortis efficitur. In sed tellus a metus egestas maximus. Curabitur finibus, purus eu imperdiet dictum, risus ante placerat quam, sit amet viverra erat tortor id. ";
 
 
         char t[16];
@@ -263,6 +264,7 @@ void loop() {
 void initBle() {
     // Create the BLE Device
     BLEDevice::init("Air Quality Monitor");
+    BLEDevice::setMTU(BLE_MTU);
 
     // Create the BLE Server
     pServer = BLEDevice::createServer();
