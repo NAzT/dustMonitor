@@ -43,6 +43,7 @@ int16_t uHumOut;
 
 class MyServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *pServer) {
+        // TODO make the ble unit xfer latest measurements.
         deviceConnected = true;
         BLEDevice::startAdvertising();
     };
@@ -100,7 +101,7 @@ void loop() {
         bleTimer = millis();
 
     }
-    if (deviceConnected && (millis() - bleGraphTimer >= 10000)) {
+    if (deviceConnected && (millis() - bleGraphTimer >= 60000)) {
         // update every second
         Serial.println("Device connected. Pushing all the values.");
         // char testXfer[512] = "Lorem ipsum dr sit amet, consectetur adipiscing elit. Etiam id turpis sodales, euismod mauris vel, iaculis augue. Aenean feugiat vitae nisi eget egestas. Praesent gravida elit eu est dictum molestie. Donec et scelerisque quam. Morbi vel orci pretium, volutpat dui sed, scelerisque arcu. Pellentesque porttitor cursus turpis, rutrum maximus dolor lobortis efficitur. In sed tellus a metus egestas maximus. Curabitur finibus, purus eu imperdiet dictum, risus ante placerat quam, sit amet viverra erat tortor id. ";
@@ -111,7 +112,7 @@ void loop() {
         // TODO make a more efficient way to xfer data
         for (int d =0; d < BLE_DATASET_ROWS; d++) {
             for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
-                const int capacity=JSON_ARRAY_SIZE(step*3)+JSON_OBJECT_SIZE(2*3);
+                const int capacity=JSON_ARRAY_SIZE(step*4)+JSON_OBJECT_SIZE(2*3);
                 StaticJsonDocument<capacity>doc;
 
                 bool haveData = false;

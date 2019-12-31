@@ -62,7 +62,7 @@ const int BLE_DATASET_ROWS = 2;
 const int BLE_DATASETLENGTH = 256;
 
 // BLE mobile graph
-int bleGraphInterval = 1000;//1000 * 60 * 5.625; // 5.6 minutes
+int bleGraphInterval = 1000 * 60 * 5.625; // 5.6 minutes
 unsigned long bleGraphDatasetTimer = 0;
 // 0 = Temp
 // 1 = CO2
