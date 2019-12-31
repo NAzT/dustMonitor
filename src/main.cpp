@@ -111,6 +111,7 @@ void loop() {
         const size_t CAPACITY = JSON_ARRAY_SIZE(step);
         // TODO make a more efficient way to xfer data
         for (int d =0; d < BLE_DATASET_ROWS; d++) {
+            int sequenceID = 0;
             for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
                 const int capacity=JSON_ARRAY_SIZE(step*4)+JSON_OBJECT_SIZE(2*3);
                 StaticJsonDocument<capacity>doc;
@@ -142,6 +143,7 @@ void loop() {
                 metadata["timenow"] = millis();
                 metadata["dataID"] = d;
                 metadata["count"] = dataCount;
+                metadata["sequenceID"]  = sequenceID;
                 // serialize the array and send the result to Serial
                 serializeJson(doc, chunk);
 
@@ -152,6 +154,7 @@ void loop() {
                 graphCharacteristic->setValue(chunk);
                 graphCharacteristic->notify();
                 delay(10);
+                sequenceID++;
             }
         }
         bleGraphTimer = millis();
@@ -244,6 +247,7 @@ void loop() {
         }
         long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
         if (bleGraphTimerCheck > bleGraphInterval) {
+            Serial.println("Adding data to ble graph.");
             addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
             bleGraphDatasetTimer = millis(); // reset timer
         }
