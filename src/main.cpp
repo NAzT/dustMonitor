@@ -43,7 +43,8 @@ int16_t uHumOut;
 
 class MyServerCallbacks : public BLEServerCallbacks {
     void onConnect(BLEServer *pServer) {
-        // TODO make the ble unit xfer latest measurements.
+        // Rest ble timer on device connect.
+        bleGraphTimer = millis() - 60000;
         deviceConnected = true;
         BLEDevice::startAdvertising();
     };
@@ -101,23 +102,22 @@ void loop() {
         bleTimer = millis();
 
     }
+    // TODO reduce timer
     if (deviceConnected && (millis() - bleGraphTimer >= 60000)) {
         // update every second
         Serial.println("Device connected. Pushing all the values.");
-        // char testXfer[512] = "Lorem ipsum dr sit amet, consectetur adipiscing elit. Etiam id turpis sodales, euismod mauris vel, iaculis augue. Aenean feugiat vitae nisi eget egestas. Praesent gravida elit eu est dictum molestie. Donec et scelerisque quam. Morbi vel orci pretium, volutpat dui sed, scelerisque arcu. Pellentesque porttitor cursus turpis, rutrum maximus dolor lobortis efficitur. In sed tellus a metus egestas maximus. Curabitur finibus, purus eu imperdiet dictum, risus ante placerat quam, sit amet viverra erat tortor id. ";
-
         const int step = 20;
         char chunk[512];
         const size_t CAPACITY = JSON_ARRAY_SIZE(step);
         // TODO make a more efficient way to xfer data
-        for (int d =0; d < BLE_DATASET_ROWS; d++) {
+        for (int d = 0; d < BLE_DATASET_ROWS; d++) {
             int sequenceID = 0;
             for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
-                const int capacity=JSON_ARRAY_SIZE(step*4)+JSON_OBJECT_SIZE(2*3);
-                StaticJsonDocument<capacity>doc;
+                const int capacity = JSON_ARRAY_SIZE(step * 4) + JSON_OBJECT_SIZE(2 * 4);
+                StaticJsonDocument<capacity> doc;
 
                 bool haveData = false;
-                int dataCount =0;
+                int dataCount = 0;
 
                 JsonArray valueArray = doc.createNestedArray();
                 JsonArray timerArray = doc.createNestedArray();
@@ -143,7 +143,7 @@ void loop() {
                 metadata["timenow"] = millis();
                 metadata["dataID"] = d;
                 metadata["count"] = dataCount;
-                metadata["sequenceID"]  = sequenceID;
+                metadata["sequenceID"] = sequenceID;
                 // serialize the array and send the result to Serial
                 serializeJson(doc, chunk);
 
@@ -182,7 +182,7 @@ void loop() {
         //ticker(lastSecond, curSecond);
         int CO2 = 0;
         CO2 = myMHZ19.getCO2();
-        int8_t Temp;
+        int Temp = 0;
         Temp = myMHZ19.getTemperature();
 
         // BLE conversion
@@ -248,7 +248,7 @@ void loop() {
         long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
         if (bleGraphTimerCheck > bleGraphInterval) {
             Serial.println("Adding data to ble graph.");
-            addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
+            addBleGraphMeasurement(CO2, Temp, millis());
             bleGraphDatasetTimer = millis(); // reset timer
         }
         // draw graph if we are in selected graph or we have just started.
@@ -475,7 +475,7 @@ void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
     timePoints[DATASET_LENGTH - 1] = Time;
 }
 
-void addBleGraphMeasurement(float CO2, float Temp, unsigned long Time) {
+void addBleGraphMeasurement(int CO2, int Temp, unsigned long Time) {
     for (int j = 0; j < BLE_DATASET_ROWS; j++) {
         for (int i = 0; i < BLE_DATASETLENGTH; i++) {
             bleGraphPoints[j][i] = bleGraphPoints[j][i + 1];

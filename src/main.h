@@ -66,7 +66,7 @@ int bleGraphInterval = 1000 * 60 * 5.625; // 5.6 minutes
 unsigned long bleGraphDatasetTimer = 0;
 // 0 = Temp
 // 1 = CO2
-float bleGraphPoints[BLE_DATASET_ROWS][BLE_DATASETLENGTH]; // 1 data point every minute for 24 hours
+int bleGraphPoints[BLE_DATASET_ROWS][BLE_DATASETLENGTH]; // 1 data point every minute for 24 hours
 unsigned long bleTimePoints[BLE_DATASETLENGTH];
 
 // graphPoints[interval][type][points]
@@ -122,7 +122,7 @@ void debug();
 
 void initBle();
 
-void addBleGraphMeasurement(float, float, unsigned long);
+void addBleGraphMeasurement(int, int, unsigned long);
 
 #ifndef DUSTMONITOR_MAIN_H
 #define DUSTMONITOR_MAIN_H
