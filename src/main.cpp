@@ -105,19 +105,18 @@ void loop() {
         Serial.println("Device connected. Pushing all the values.");
         // char testXfer[512] = "Lorem ipsum dr sit amet, consectetur adipiscing elit. Etiam id turpis sodales, euismod mauris vel, iaculis augue. Aenean feugiat vitae nisi eget egestas. Praesent gravida elit eu est dictum molestie. Donec et scelerisque quam. Morbi vel orci pretium, volutpat dui sed, scelerisque arcu. Pellentesque porttitor cursus turpis, rutrum maximus dolor lobortis efficitur. In sed tellus a metus egestas maximus. Curabitur finibus, purus eu imperdiet dictum, risus ante placerat quam, sit amet viverra erat tortor id. ";
 
-        int step = 20;
+        const int step = 20;
         char chunk[512];
         const size_t CAPACITY = JSON_ARRAY_SIZE(step);
         // TODO make a more efficient way to xfer data
         for (int d =0; d < BLE_DATASET_ROWS; d++) {
             for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
-                const int capacity=(JSON_ARRAY_SIZE(15)*2)+(1*JSON_OBJECT_SIZE(2));
+                const int capacity=JSON_ARRAY_SIZE(step*3)+JSON_OBJECT_SIZE(2*3);
                 StaticJsonDocument<capacity>doc;
 
                 bool haveData = false;
-                JsonObject metadata = doc.createNestedObject();
-                metadata["timenow"] = millis();
-                metadata["dataID"] = d;
+                int dataCount =0;
+
                 JsonArray valueArray = doc.createNestedArray();
                 JsonArray timerArray = doc.createNestedArray();
                 // TODO fix the below, make it dynamic
@@ -129,6 +128,7 @@ void loop() {
                         valueArray.add(convertedUnit);
                         timerArray.add(bleTimePoints[j]);
                         haveData = true;
+                        dataCount++;
                     }
                     //valueArray.add(j);
                 }
@@ -137,7 +137,10 @@ void loop() {
                     Serial.print(".");
                     continue;
                 }
-
+                JsonObject metadata = doc.createNestedObject();
+                metadata["timenow"] = millis();
+                metadata["dataID"] = d;
+                metadata["count"] = dataCount;
                 // serialize the array and send the result to Serial
                 serializeJson(doc, chunk);
 
