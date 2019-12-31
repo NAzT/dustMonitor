@@ -58,14 +58,15 @@ volatile bool inSubMenu = false;
 
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
-const int BLE_DATASETLENGTH = 1440;
+const int BLE_DATASET_ROWS = 2;
+const int BLE_DATASETLENGTH = 256;
 
 // BLE mobile graph
-int bleGraphInterval = 1000 * 60; // 60 seconds
+int bleGraphInterval = 1000;//1000 * 60 * 5.625; // 5.6 minutes
 unsigned long bleGraphDatasetTimer = 0;
 // 0 = Temp
 // 1 = CO2
-float bleGraphPoints[3][BLE_DATASETLENGTH]; // 1 data point every minute for 24 hours
+float bleGraphPoints[BLE_DATASET_ROWS][BLE_DATASETLENGTH]; // 1 data point every minute for 24 hours
 unsigned long bleTimePoints[BLE_DATASETLENGTH];
 
 // graphPoints[interval][type][points]

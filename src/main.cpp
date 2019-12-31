@@ -103,56 +103,52 @@ void loop() {
     if (deviceConnected && (millis() - bleGraphTimer >= 10000)) {
         // update every second
         Serial.println("Device connected. Pushing all the values.");
-       // char testXfer[512] = "Lorem ipsum dr sit amet, consectetur adipiscing elit. Etiam id turpis sodales, euismod mauris vel, iaculis augue. Aenean feugiat vitae nisi eget egestas. Praesent gravida elit eu est dictum molestie. Donec et scelerisque quam. Morbi vel orci pretium, volutpat dui sed, scelerisque arcu. Pellentesque porttitor cursus turpis, rutrum maximus dolor lobortis efficitur. In sed tellus a metus egestas maximus. Curabitur finibus, purus eu imperdiet dictum, risus ante placerat quam, sit amet viverra erat tortor id. ";
+        // char testXfer[512] = "Lorem ipsum dr sit amet, consectetur adipiscing elit. Etiam id turpis sodales, euismod mauris vel, iaculis augue. Aenean feugiat vitae nisi eget egestas. Praesent gravida elit eu est dictum molestie. Donec et scelerisque quam. Morbi vel orci pretium, volutpat dui sed, scelerisque arcu. Pellentesque porttitor cursus turpis, rutrum maximus dolor lobortis efficitur. In sed tellus a metus egestas maximus. Curabitur finibus, purus eu imperdiet dictum, risus ante placerat quam, sit amet viverra erat tortor id. ";
 
-
-        char t[16];
-        char c[16];
-        char tm[16];
+        int step = 20;
+        char chunk[512];
+        const size_t CAPACITY = JSON_ARRAY_SIZE(step);
         // TODO make a more efficient way to xfer data
-        for (int i = 0; i < BLE_DATASETLENGTH; i += 5) {
-            char chunk[512];
-            const int capacity = JSON_ARRAY_SIZE(5) + 5 * JSON_OBJECT_SIZE(3);
-            StaticJsonDocument<capacity> doc;
-            sprintf(t, "%4.2f", bleGraphPoints[0][i]);
-            sprintf(c, "%4.2f", bleGraphPoints[0][i]);
-            sprintf(tm, "%4.2f", bleTimePoints[i]);
-            JsonObject metadata = doc.createNestedObject("metadata");
-            metadata["time"] = millis();
+        for (int d =0; d < BLE_DATASET_ROWS; d++) {
+            for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
+                const int capacity=(JSON_ARRAY_SIZE(15)*2)+(1*JSON_OBJECT_SIZE(2));
+                StaticJsonDocument<capacity>doc;
 
-            JsonArray graphPoints = doc.createNestedArray("graphPoints");
-            JsonObject graphPoint1 = graphPoints.createNestedObject();
-            graphPoint1["CO2"] = c;
-            graphPoint1["Temp"] = t;
-            graphPoint1["Millis"] = tm;
+                bool haveData = false;
+                JsonObject metadata = doc.createNestedObject();
+                metadata["timenow"] = millis();
+                metadata["dataID"] = d;
+                JsonArray valueArray = doc.createNestedArray();
+                JsonArray timerArray = doc.createNestedArray();
+                // TODO fix the below, make it dynamic
+                for (int j = i; j < (i + step); j++) {
 
-            // TODO fix the below, make it dynamic
+                    long convertedUnit = bleGraphPoints[d][j];
+                    // add some values
+                    if (convertedUnit != 0) {
+                        valueArray.add(convertedUnit);
+                        timerArray.add(bleTimePoints[j]);
+                        haveData = true;
+                    }
+                    //valueArray.add(j);
+                }
+                // Any data?
+                if (!haveData) {
+                    Serial.print(".");
+                    continue;
+                }
 
-            JsonObject graphPoint2 = graphPoints.createNestedObject();
-            graphPoint2["CO2"] = c;
-            graphPoint2["Temp"] = t;
-            graphPoint2["Millis"] = tm;
+                // serialize the array and send the result to Serial
+                serializeJson(doc, chunk);
 
-            JsonObject graphPoint3 = graphPoints.createNestedObject();
-            graphPoint3["CO2"] = c;
-            graphPoint3["Temp"] = t;
-            graphPoint3["Millis"] = tm;
-
-            JsonObject graphPoint4 = graphPoints.createNestedObject();
-            graphPoint4["CO2"] = c;
-            graphPoint4["Temp"] = t;
-            graphPoint4["Millis"] = tm;
-
-            JsonObject graphPoint5 = graphPoints.createNestedObject();
-            graphPoint5["CO2"] = c;
-            graphPoint5["Temp"] = t;
-            graphPoint5["Millis"] = tm;
-
-            serializeJson(doc, chunk);
-            Serial.println(chunk);
-            graphCharacteristic->setValue(chunk);
-            graphCharacteristic->notify();
-            delay(10);
+                Serial.print("Payload length: ");
+                Serial.println(sizeof(chunk));
+                serializeJson(doc, chunk);
+                Serial.println(chunk);
+                graphCharacteristic->setValue(chunk);
+                graphCharacteristic->notify();
+                delay(10);
+            }
         }
         bleGraphTimer = millis();
 
@@ -242,7 +238,7 @@ void loop() {
                 }
             }
         }
-        unsigned long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
+        long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
         if (bleGraphTimerCheck > bleGraphInterval) {
             addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
             bleGraphDatasetTimer = millis(); // reset timer
@@ -472,7 +468,7 @@ void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
 }
 
 void addBleGraphMeasurement(float CO2, float Temp, unsigned long Time) {
-    for (int j = 0; j < 3; j++) {
+    for (int j = 0; j < BLE_DATASET_ROWS; j++) {
         for (int i = 0; i < BLE_DATASETLENGTH; i++) {
             bleGraphPoints[j][i] = bleGraphPoints[j][i + 1];
         }
@@ -480,6 +476,9 @@ void addBleGraphMeasurement(float CO2, float Temp, unsigned long Time) {
     bleGraphPoints[0][BLE_DATASETLENGTH - 1] = CO2;
     bleGraphPoints[1][BLE_DATASETLENGTH - 1] = Temp;
     // TODO dust ppm etc
+    for (int i = 0; i < BLE_DATASETLENGTH; i++) {
+        bleTimePoints[i] = bleTimePoints[i + 1];
+    }
     bleTimePoints[BLE_DATASETLENGTH - 1] = Time;
 }
 
