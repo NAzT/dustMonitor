@@ -84,7 +84,8 @@ void loop() {
     // Deal with BLE first
     // Push BLE values first
     // notify changed bleTemperatureValue
-    if (deviceConnected && (millis() - bleTimer >= 1000)) {
+    // 5 sec
+    if (deviceConnected && (millis() - bleTimer >= 5000)) {
         // update every second
         Serial.println("Device connected. Pushing values.");
         Serial.print("Temperature: ");
@@ -103,17 +104,15 @@ void loop() {
 
     }
     // TODO reduce timer
-    if (deviceConnected && (millis() - bleGraphTimer >= 60000)) {
+    if (deviceConnected && (millis() - bleGraphTimer >= 30000)) {
         // update every second
         Serial.println("Device connected. Pushing all the values.");
         const int step = 20;
-        char chunk[512];
-        const size_t CAPACITY = JSON_ARRAY_SIZE(step);
-        // TODO make a more efficient way to xfer data
+        const int capacity = JSON_ARRAY_SIZE(step * 4) + JSON_OBJECT_SIZE(2 * 4);
         for (int d = 0; d < BLE_DATASET_ROWS; d++) {
+            char chunk[512];
             int sequenceID = 0;
             for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
-                const int capacity = JSON_ARRAY_SIZE(step * 4) + JSON_OBJECT_SIZE(2 * 4);
                 StaticJsonDocument<capacity> doc;
 
                 bool haveData = false;
@@ -122,17 +121,14 @@ void loop() {
                 JsonArray valueArray = doc.createNestedArray();
                 JsonArray timerArray = doc.createNestedArray();
                 // TODO fix the below, make it dynamic
-                for (int j = i; j < (i + step); j++) {
-
-                    long convertedUnit = bleGraphPoints[d][j];
+                for (int j = i; j < (i + step) && j < BLE_DATASETLENGTH; j++) {
                     // add some values
-                    if (convertedUnit != 0) {
-                        valueArray.add(convertedUnit);
+                    if (bleGraphPoints[d][j] != 0) {
+                        valueArray.add(serialized(String(bleGraphPoints[d][j])));
                         timerArray.add(bleTimePoints[j]);
                         haveData = true;
                         dataCount++;
                     }
-                    //valueArray.add(j);
                 }
                 // Any data?
                 if (!haveData) {
@@ -148,8 +144,7 @@ void loop() {
                 serializeJson(doc, chunk);
 
                 Serial.print("Payload length: ");
-                Serial.println(sizeof(chunk));
-                serializeJson(doc, chunk);
+                serializeJson(doc, chunk, sizeof(chunk));
                 Serial.println(chunk);
                 graphCharacteristic->setValue(chunk);
                 graphCharacteristic->notify();
@@ -170,6 +165,7 @@ void loop() {
     // connecting
     if (deviceConnected && !oldDeviceConnected) {
         // do stuff here on connecting
+        bleGraphTimer = millis() - 60000;
         oldDeviceConnected = deviceConnected;
     }
     // ************************************ BLE ********************************************************************* //
@@ -246,9 +242,9 @@ void loop() {
             }
         }
         long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
-        if (bleGraphTimerCheck > bleGraphInterval) {
+        if (bleGraphTimerCheck > bleGraphInterval|| bleGraphDatasetTimer == 0) {
             Serial.println("Adding data to ble graph.");
-            addBleGraphMeasurement(CO2, Temp, millis());
+            addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
             bleGraphDatasetTimer = millis(); // reset timer
         }
         // draw graph if we are in selected graph or we have just started.
@@ -475,7 +471,7 @@ void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
     timePoints[DATASET_LENGTH - 1] = Time;
 }
 
-void addBleGraphMeasurement(int CO2, int Temp, unsigned long Time) {
+void addBleGraphMeasurement(float CO2, float Temp, unsigned long Time) {
     for (int j = 0; j < BLE_DATASET_ROWS; j++) {
         for (int i = 0; i < BLE_DATASETLENGTH; i++) {
             bleGraphPoints[j][i] = bleGraphPoints[j][i + 1];
@@ -504,6 +500,17 @@ void debug() {
             }
             Serial.println();
         }
+    }
+    Serial.print("BLE Graph Points");
+    for (int row = 0; row < BLE_DATASET_ROWS; row++) {
+        Serial.print("Row: ");
+        Serial.println(row);
+        Serial.print("Data: ");
+        for (int k = 0; k < BLE_DATASETLENGTH; k++) {
+            Serial.print(bleGraphPoints[row][k]);
+            Serial.print(",");
+        }
+        Serial.println("");
     }
 }
 
