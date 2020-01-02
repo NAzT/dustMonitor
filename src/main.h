@@ -59,10 +59,10 @@ volatile bool inSubMenu = false;
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
 const int BLE_DATASET_ROWS = 2;
-const int BLE_DATASETLENGTH = 64;
+const int BLE_DATASETLENGTH = 96;
 
 // BLE mobile graph
-int bleGraphInterval = (24 * 60 *60 * 1000)/ BLE_DATASETLENGTH;
+int bleGraphInterval = 1000; //(24 * 60 *60 * 1000)/ BLE_DATASETLENGTH;
 unsigned long bleGraphDatasetTimer = 0;
 // 0 = Temp
 // 1 = CO2

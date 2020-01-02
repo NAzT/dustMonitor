@@ -109,8 +109,8 @@ void loop() {
         Serial.println("Device connected. Pushing all the values.");
         const int step = 20;
         const int capacity = JSON_ARRAY_SIZE(step * 4) + JSON_OBJECT_SIZE(2 * 4);
+        char chunk[512];
         for (int d = 0; d < BLE_DATASET_ROWS; d++) {
-            char chunk[512];
             int sequenceID = 0;
             for (int i = 0; i < BLE_DATASETLENGTH; i += step) {
                 StaticJsonDocument<capacity> doc;
@@ -141,9 +141,6 @@ void loop() {
                 metadata["count"] = dataCount;
                 metadata["sequenceID"] = sequenceID;
                 // serialize the array and send the result to Serial
-                serializeJson(doc, chunk);
-
-                Serial.print("Payload length: ");
                 serializeJson(doc, chunk, sizeof(chunk));
                 Serial.println(chunk);
                 graphCharacteristic->setValue(chunk);
@@ -152,8 +149,21 @@ void loop() {
                 sequenceID++;
             }
         }
+        // Send end command
+        StaticJsonDocument<capacity> doc;
+        JsonArray valueArray = doc.createNestedArray();
+        JsonArray timerArray = doc.createNestedArray();
+        JsonObject metadata = doc.createNestedObject();
+        metadata["timenow"] = millis();
+        metadata["dataID"] = 255;
+        metadata["count"] = 0;
+        metadata["sequenceID"] = 65536;
+        // serialize the array and send the result to Serial
+        serializeJson(doc, chunk, sizeof(chunk));
+        Serial.println(chunk);
+        graphCharacteristic->setValue(chunk);
+        graphCharacteristic->notify();
         bleGraphTimer = millis();
-
     }
     // disconnecting
     if (!deviceConnected && oldDeviceConnected) {
