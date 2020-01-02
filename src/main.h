@@ -59,7 +59,7 @@ volatile bool inSubMenu = false;
 // Graphing Stuff
 const int DATASET_LENGTH = 22;
 const int BLE_DATASET_ROWS = 2;
-const int BLE_DATASETLENGTH = 96;
+const int BLE_DATASETLENGTH = 240;
 
 // BLE mobile graph
 int bleGraphInterval = (24 * 60 *60 * 1000)/ BLE_DATASETLENGTH;
