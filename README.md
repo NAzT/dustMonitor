@@ -5,12 +5,17 @@ Currently supports graphing to the inbuilt LCD and via Bluetooth to the app.
 
 Still under active development - WIP.
 
-# Planned Features
+# Current Features
 
-1. BLE service to push live readings to a mobile app
-2. SD Card option to save data to disk
-3. Dust and VOC measurement
-4. Cheaper version with mobile app only
+1. Real time LCD graphs (8hr, 3hr, 1hr, 30min and 10min intervals)
+2. LCD graphs with CO2/Temp
+2. BLE real time measurements
+3. Mobile graphs displaying a 24 hour range
+
+# Planned Features
+1. SD Card option to save data to disk
+2. Dust and VOC measurement
+3. Cheaper version with mobile app only
 
 Pull requests welcome!
 
