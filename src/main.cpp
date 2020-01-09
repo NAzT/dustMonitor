@@ -19,6 +19,8 @@
 #include <string>
 #include <ArduinoJson.h>
 
+
+
 // BLE
 BLEServer *pServer = NULL;
 BLECharacteristic *tempCharacteristic = NULL;
@@ -77,9 +79,13 @@ void setup() {
     drawButtons(mainButtons);
 
     initBle();
-}
+ }
 
 void loop() {
+
+    middleButton.read();
+    leftButton.read();
+    rightButton.read();
     // ************************************ BLE ********************************************************************* //
     // Deal with BLE first
     // Push BLE values first
@@ -180,9 +186,6 @@ void loop() {
     }
     // ************************************ BLE ********************************************************************* //
 
-    middleButton.read();
-    leftButton.read();
-    rightButton.read();
     if (millis() - getDataTimer >= 50) {
         int curSecond = ((millis() - uptime) / 1000);
         //ticker(lastSecond, curSecond);
