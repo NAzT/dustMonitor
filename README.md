@@ -1,5 +1,5 @@
 # Air Quality Monitor (Dust Monitor)
-Code base for my dust/CO2 meter. Currently waiting on parts before implementing dust PPM.
+Code base for my dust/CO2 meter.
 
 Currently supports graphing to the inbuilt LCD and via Bluetooth to the app.
 
@@ -13,9 +13,8 @@ Still under active development - WIP.
 3. Mobile graphs displaying a 24 hour range
 
 # Planned Features
-1. SD Card option to save data to disk
-2. Dust and VOC measurement
-3. Cheaper version with mobile app only
+1. Dust and VOC measurement
+2. Cheaper version with mobile app only
 
 Pull requests welcome!
 
