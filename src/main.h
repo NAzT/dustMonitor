@@ -33,13 +33,13 @@ char BLE_GRAPH_CHARACTERISTIC[37] = "900dd909-eb3a-4774-bcdb-b10d8dd2ae28";
 // All our options represented in numerical form.
 // to match the options in openOptionsMenu.cpp:
 char menuSettingsFields[5][5][16] = {
-        {"8hrs",    "3hrs", "1hr", "30min", "10min"},
-        {"3min",    "1min", "30s", "Off"},
-        {"On",      "Off"},
+        {"8hrs",    "3hrs",  "1hr", "30min", "10min"},
+        {"3min",    "1min",  "30s", "Off"},
+        {"60min",   "30min", "10m", "1m",    "10s"},
         {"English", "Korean"},
         {" "},
 };
-char menuItems[5][16] = {"Graph Range", "Warm Up", "WiFi Mode", "Language", "Exit"};
+char menuItems[5][16] = {"Graph Range", "Warm Up", "Backlight", "Language", "Exit"};
 char mainButtons[3][16] = {"OPTIONS", "GRAPH", "RANGE"};
 char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 
@@ -47,11 +47,13 @@ char optionsButtons[3][16] = {"UP", "ENTER", "DOWN"};
 unsigned long getDataTimer = 0;
 unsigned long bleTimer = 0;
 unsigned long bleGraphTimer = 0;
+unsigned long backlightTimer = 0;
+bool backlight = true;
 
 unsigned long graphIntervalTimer[5] = {0, 0, 0, 0, 0};
 unsigned long uptime = 0;
 int lastTVOC = 0;
-int lastCO2PPCCCS =0;
+int lastCO2PPCCCS = 0;
 int lastCO2PPM = 0;
 int lastSecond = 0;
 
@@ -63,7 +65,7 @@ const int BLE_DATASET_ROWS = 2;
 const int BLE_DATASETLENGTH = 240;
 
 // BLE mobile graph
-int bleGraphInterval = (24 * 60 *60 * 1000)/ BLE_DATASETLENGTH;
+int bleGraphInterval = (24 * 60 * 60 * 1000) / BLE_DATASETLENGTH;
 unsigned long bleGraphDatasetTimer = 0;
 // 0 = Temp
 // 1 = CO2
@@ -75,15 +77,15 @@ int graphPoints[5][5][DATASET_LENGTH];
 unsigned long timePoints[DATASET_LENGTH];
 int optionsMatrix[5][6] = {
         {((8 * 60 * 60 * 1000) / DATASET_LENGTH),
-                          ((3 * 60 * 60 * 1000) / DATASET_LENGTH),
-                                           ((1 * 60 * 60 * 1000) / DATASET_LENGTH),
-                                                        ((30 * 60 * 1000) / DATASET_LENGTH),
-                                                             ((10 * 60 * 1000) / DATASET_LENGTH), -1
+                           ((3 * 60 * 60 * 1000) / DATASET_LENGTH),
+                                             ((1 * 60 * 60 * 1000) / DATASET_LENGTH),
+                                                               ((30 * 60 * 1000) / DATASET_LENGTH),
+                                                                            ((10 * 60 * 1000) / DATASET_LENGTH), -1
         },
-        {(3 * 60 * 1000), (1 * 60 * 1000), (30 * 1000), (0), -1,                                  -1},
-        {0,               1,               -1,          -1,  -1,                                  -1},
-        {0,               1,               -1,          -1,  -1,                                  -1},
-        {0,               1,               -1,          -1,  -1,                                  -1},
+        {(3 * 60 * 1000),  (1 * 60 * 1000),  (30 * 1000),      (0),         -1,                                  -1},
+        {(60 * 60 * 1000), (30 * 60 * 1000), (10 * 60 * 1000), (60 * 1000), (10 * 1000)},
+        {0,                1,                -1,               -1,          -1,                                  -1},
+        {0,                1,                -1,               -1,          -1,                                  -1},
 };
 
 // Volatile
@@ -126,6 +128,8 @@ void initBle();
 void initTFT();
 
 void addBleGraphMeasurement(float, float, unsigned long);
+
+boolean setPowerBoostKeepOn(int);
 
 #ifndef DUSTMONITOR_MAIN_H
 #define DUSTMONITOR_MAIN_H

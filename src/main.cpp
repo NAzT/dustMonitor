@@ -22,7 +22,7 @@
 #include "T4_V13.h"
 #include <TFT_eSPI.h>
 #include <SPI.h>
-//#include <Wire.h>
+#include <Wire.h>
 
 TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
 SPIClass sdSPI(VSPI);
@@ -100,10 +100,10 @@ void setup() {
     drawButtons(mainButtons);
 
     initBle();
+
 }
 
 void loop() {
-
     middleButton.read();
     leftButton.read();
     rightButton.read();
@@ -316,6 +316,14 @@ void loop() {
         lastSecond = curSecond;
         getDataTimer = millis();
     }
+    if (millis() - backlightTimer >= optionsMatrix[2][currentOptions[2] + 1]) {
+        // turn off backlight
+        Serial.print("Turning off backlight: ");
+        Serial.println(optionsMatrix[2][currentOptions[2] + 1]);
+        digitalWrite(TFT_BL, LOW);
+        backlight = false;
+        backlightTimer = millis();
+    }
 }
 
 void initTFT() {
@@ -428,7 +436,7 @@ void runSetup() {
         currentOptions[1] = config.conf.warmUpTime;
 
         tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
-        tft.print("debug mode: ");
+        tft.print("backlight timeout: ");
         tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[2][config.conf.debugMode]);
         currentOptions[2] = config.conf.debugMode;
@@ -660,9 +668,9 @@ void drawGraph(int intervalID, int selectedDataSet) {
     }
 
     Serial.println();
-    Serial.println("/////////////// DEBUG  ////////////////////");
-    debug();
-    Serial.println("/////////////// DEBUG  ////////////////////");
+    //Serial.println("/////////////// DEBUG  ////////////////////");
+    //debug();
+    //Serial.println("/////////////// DEBUG  ////////////////////");
 }
 
 void drawScales() {
@@ -714,6 +722,11 @@ void drawScales() {
 }
 
 void cycleGraph() {
+    if (!backlight) {
+        digitalWrite(TFT_BL, HIGH);
+        backlight = true;
+        backlightTimer = millis();
+    }
     if (inSubMenu) { return; }
     if (graphDataSet == 0) {
         graphDataSet = 1;
@@ -726,23 +739,23 @@ void cycleGraph() {
 
 void calculateScale(int min, int max) {
     // Scales below 160 are less than 1. Deal with them first.
-    Serial.print("Min :");
+    Serial.print("Min: ");
     Serial.println(min);
     Serial.print("Max: ");
     Serial.println(max);
 
-    if (min < 50) {
+    if (max < 50) {
         Serial.println("Scale set to 0.3");
         scale = 0.3;
-    } else if (min < 100) {
+    } else if (max < 100) {
         Serial.println("Scale set to 0.6");
         scale = 0.5;
-    } else if (min < 160) {
+    } else if (max < 160) {
         Serial.println("Scale set to 1");
         scale = 1;
-    } else if (min > 160) {
+    } else if (max > 160) {
         Serial.println("Scale set to rounded.");
-        int roundedScale = (min / 160);
+        int roundedScale = (max / 160);
         scale = roundedScale;
     }
 
@@ -790,6 +803,11 @@ void ticker(int lastSec, int curSec) {
 }
 
 void cycleRange() {
+    if (!backlight) {
+        digitalWrite(TFT_BL, HIGH);
+        backlight = true;
+        backlightTimer = millis();
+    }
     if (inSubMenu) { return; }
     optionsMatrix[0][currentOptions[0] + 1] != -1 ? currentOptions[0]++
                                                   : currentOptions[0] = 0;
@@ -800,6 +818,11 @@ void cycleRange() {
 }
 
 void openOptionsMenu() {
+    if (!backlight) {
+        digitalWrite(TFT_BL, HIGH);
+        backlight = true;
+        backlightTimer = millis();
+    }
     if (inSubMenu != 0) {
         return;
     }
@@ -884,4 +907,15 @@ void openOptionsMenu() {
     drawScales();
     drawGraph(currentOptions[0], graphDataSet);
     drawButtons(mainButtons);
+}
+
+bool setPowerBoostKeepOn(int en)
+{
+    Wire.beginTransmission(IP5306_ADDR);
+    Wire.write(IP5306_REG_SYS_CTL0);
+    if (en)
+        Wire.write(0x37); // Set bit1: 1 enable 0 disable boost keep on
+    else
+        Wire.write(0x35); // 0x37 is default reg value
+    return Wire.endTransmission() == 0;
 }
