@@ -1,5 +1,5 @@
 # Air Quality Monitor (Dust Monitor)
-Code base for my dust/CO2 meter.
+Code base for my CO2 meter.
 
 Currently supports graphing to the inbuilt LCD and via Bluetooth to the app.
 
