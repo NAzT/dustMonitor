@@ -35,6 +35,7 @@ char buff[512];
 
 // CCS811
 #include "Adafruit_CCS811.h"
+
 Adafruit_CCS811 ccs;
 // CCS811
 
@@ -79,10 +80,10 @@ void setup() {
     myMHZ19.begin(mySerial);
     myMHZ19.autoCalibration();
 
-    if(!ccs.begin()){
+    if (!ccs.begin()) {
         Serial.println("Failed to start sensor! Please check your wiring.");
     }
-    while(!ccs.available());
+    while (!ccs.available());
 
     initTFT();
     runSetup();
@@ -209,23 +210,29 @@ void loop() {
     if (millis() - getDataTimer >= 50) {
         int curSecond = ((millis() - uptime) / 1000);
         //ticker(lastSecond, curSecond);
-        int CO2 = 0;
-        CO2 = myMHZ19.getCO2();
+        int CO2 = myMHZ19.getCO2();
         int TVOC = 0;
-
+        int CO2CCS = 0;
         if(ccs.available()){
             if(!ccs.readData()){
-                TVOC = ccs.getTVOC();
+                Serial.print("CO2: ");
+                Serial.print(ccs.geteCO2());
+                CO2CCS = ccs.geteCO2();
+                Serial.print("ppm, TVOC: ");
+                Serial.print(ccs.getTVOC());
+                TVOC =ccs.getTVOC();
             }
+        }else{
+            TVOC = lastTVOC;
+            CO2CCS = lastCO2PPCCCS;
         }
 
         // BLE conversion
-        bleCo2Value = myMHZ19.getCO2();
+        bleCo2Value = CO2;
         bleTvocValue = TVOC;
 
-        // Lazy update the CO2
-        if (lastCO2PPM != CO2) {
-            // CO2
+        // CO2
+        if (lastCO2PPM != CO2 || lastCO2PPCCCS != CO2CCS) {
             int color = TFT_CYAN;
             if (CO2 <= 500) {
                 color = TFT_BLUE;
@@ -241,21 +248,32 @@ void loop() {
                 color = TFT_PURPLE;
             }
             tft.setTextColor(color);
-            tft.fillRect(110, 65, 80, 20, CUSTOM_DARK);
+            tft.fillRect(110, 65, 120, 20, CUSTOM_DARK);
             tft.setCursor(5, 65);
             tft.setTextSize(2);
             tft.print("CO2 PPM: ");
+            Serial.print("CO2 PPM: ");
+            Serial.print(CO2);
             tft.setCursor(110, 65);
             tft.print(CO2);
+            if (CO2CCS > 0) {
+                tft.print("/");
+                tft.print(CO2CCS);
+            } else {
+                tft.print("/");
+                tft.print(lastCO2PPCCCS);
+            }
             tft.setTextColor(TFT_WHITE);
         }
-        // Lazy update the TVOC
-        if (lastTVOC != TVOC) {
-            // TVOC
+
+        // TVOC
+        if (lastTVOC != TVOC && TVOC > 0) {
             tft.fillRect(110, 95, 80, 20, CUSTOM_DARK);
             tft.setCursor(5, 95);
             tft.setTextSize(2);
             tft.print("TVOC: ");
+            Serial.print("TVOC: ");
+            Serial.println(TVOC);
             tft.setCursor(110, 95);
             tft.print(TVOC);
         }
@@ -294,6 +312,7 @@ void loop() {
 
         lastTVOC = TVOC;
         lastCO2PPM = CO2;
+        lastCO2PPCCCS = CO2CCS;
         lastSecond = curSecond;
         getDataTimer = millis();
     }
@@ -504,14 +523,19 @@ void drawButtons(char buttons[3][16]) {
 }
 
 
-void addMeasurement(int CO2, int Temp, unsigned long Time, int intervalID) {
+void addMeasurement(int CO2, int Tvoc, unsigned long Time, int intervalID) {
     for (int j = 0; j < 5; j++) {
         for (int i = 0; i < DATASET_LENGTH; i++) {
             graphPoints[intervalID][j][i] = graphPoints[intervalID][j][i + 1];
         }
     }
+    Serial.println("Added to graph: ");
+    Serial.println("CO2: ");
+    Serial.print(CO2);
+    Serial.print("Tvoc: ");
+    Serial.print(Tvoc);
     graphPoints[intervalID][0][DATASET_LENGTH - 1] = CO2;
-    graphPoints[intervalID][1][DATASET_LENGTH - 1] = Temp;
+    graphPoints[intervalID][1][DATASET_LENGTH - 1] = Tvoc;
     timePoints[DATASET_LENGTH - 1] = Time;
 }
 
@@ -737,7 +761,7 @@ void calculateScale(int min, int max) {
             if (scale < 1) {
                 while ((maxLong * scale) > 160) {
                     Serial.println(scale);
-                    scale += 0.01;
+                    scale += 0.1;
                 }
             } else {
                 while ((maxLong / scale) > 160) {

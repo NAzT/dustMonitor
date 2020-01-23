@@ -51,6 +51,7 @@ unsigned long bleGraphTimer = 0;
 unsigned long graphIntervalTimer[5] = {0, 0, 0, 0, 0};
 unsigned long uptime = 0;
 int lastTVOC = 0;
+int lastCO2PPCCCS =0;
 int lastCO2PPM = 0;
 int lastSecond = 0;
 
