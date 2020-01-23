@@ -122,6 +122,8 @@ void debug();
 
 void initBle();
 
+void initTFT();
+
 void addBleGraphMeasurement(float, float, unsigned long);
 
 #ifndef DUSTMONITOR_MAIN_H

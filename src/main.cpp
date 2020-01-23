@@ -1,11 +1,9 @@
 /*
  * Copyright Wilyarti Howard - 2019
  */
-#include <Adafruit_ILI9341.h>
 #include <TimeLib.h>
 #include <Arduino.h>
 #include <EasyButton.h>
-#include <cmath>
 #include "MHZ19.h"
 #include "bitmap.c"
 #include "main.h"
@@ -16,9 +14,23 @@
 #include <BLEServer.h>
 #include <BLEUtils.h>
 #include <BLE2902.h>
-#include <string>
 #include <ArduinoJson.h>
 
+// TTGO V13
+#define T4_V13
+
+#include "T4_V13.h"
+#include <TFT_eSPI.h>
+#include <SPI.h>
+//#include <Wire.h>
+
+TFT_eSPI tft = TFT_eSPI(); // Invoke custom library
+SPIClass sdSPI(VSPI);
+#define IP5306_ADDR         0X75
+#define IP5306_REG_SYS_CTL0 0x00
+uint8_t state = 0;
+uint8_t g_btns[] = BUTTONS_MAP;
+char buff[512];
 
 
 // BLE
@@ -36,7 +48,6 @@ HardwareSerial mySerial(1);
 EasyButton middleButton(BUTTON_A);
 EasyButton leftButton(BUTTON_B);
 EasyButton rightButton(BUTTON_C);
-Adafruit_ILI9341 tft = Adafruit_ILI9341(TFT_CS, TFT_DC, TFT_MOSI, TFT_CLK, TFT_RST, TFT_MISO);
 
 EEPROMFunctions config;
 
@@ -62,9 +73,8 @@ void setup() {
     mySerial.begin(BAUDRATE, SERIAL_8N1, RX_PIN, TX_PIN);
     myMHZ19.begin(mySerial);
     myMHZ19.autoCalibration();
-    tft.begin();
-    tft.setRotation(0);
 
+    initTFT();
     runSetup();
     drawHeader();
     drawScales();
@@ -79,7 +89,7 @@ void setup() {
     drawButtons(mainButtons);
 
     initBle();
- }
+}
 
 void loop() {
 
@@ -201,19 +211,19 @@ void loop() {
         // Lazy update the CO2
         if (lastCO2PPM != CO2) {
             // CO2
-            int color = ILI9341_CYAN;
+            int color = TFT_CYAN;
             if (CO2 <= 500) {
-                color = ILI9341_BLUE;
+                color = TFT_BLUE;
             } else if (CO2 <= 1000) {
-                color = ILI9341_GREEN;
+                color = TFT_GREEN;
             } else if (CO2 <= 1500) {
-                color = ILI9341_YELLOW;
+                color = TFT_YELLOW;
             } else if (CO2 <= 2000) {
-                color = ILI9341_ORANGE;
+                color = TFT_ORANGE;
             } else if (CO2 <= 2500) {
-                color = ILI9341_RED;
+                color = TFT_RED;
             } else if (CO2 <= 5000) {
-                color = ILI9341_PURPLE;
+                color = TFT_PURPLE;
             }
             tft.setTextColor(color);
             tft.fillRect(110, 65, 80, 20, CUSTOM_DARK);
@@ -222,7 +232,7 @@ void loop() {
             tft.print("CO2 PPM: ");
             tft.setCursor(110, 65);
             tft.print(CO2);
-            tft.setTextColor(ILI9341_WHITE);
+            tft.setTextColor(TFT_WHITE);
         }
         // Lazy update the Temp
         if (lastTemperature != Temp) {
@@ -255,7 +265,7 @@ void loop() {
             }
         }
         long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
-        if (bleGraphTimerCheck > bleGraphInterval|| bleGraphDatasetTimer == 0) {
+        if (bleGraphTimerCheck > bleGraphInterval || bleGraphDatasetTimer == 0) {
             Serial.println("Adding data to ble graph.");
             addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
             bleGraphDatasetTimer = millis(); // reset timer
@@ -272,6 +282,23 @@ void loop() {
         lastSecond = curSecond;
         getDataTimer = millis();
     }
+}
+
+void initTFT() {
+    tft.init();
+    tft.setRotation(0);
+    tft.fillScreen(TFT_BLACK);
+    tft.setTextSize(1);
+    tft.setTextColor(TFT_WHITE);
+    tft.setCursor(0, 0);
+
+    if (TFT_BL > 0) {
+        pinMode(TFT_BL, OUTPUT);
+        digitalWrite(TFT_BL, HIGH);
+    }
+
+    tft.setTextFont(1);
+    tft.setTextSize(1);
 }
 
 void initBle() {
@@ -334,47 +361,47 @@ void initBle() {
 
 void runSetup() {
     drawHeader();
-    tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+    tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
     tft.setCursor(0, 50);
     tft.setTextSize(1);
     tft.println("Reading setup from EEPROM");
     int warmUpTime = optionsMatrix[1][config.conf.warmUpTime];
     if (config.loadConfig()) {
         tft.print("ThingSpeak Channel: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(config.conf.thingSpeakChannel);
-        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+        tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
         tft.print("ThingSpeak API Key: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(config.conf.thingSpeakKey);
 
-        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+        tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
         tft.print("publishInterval: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(config.conf.publishInterval);
 
         // --> not actual values but options from the optionsMatrix
-        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+        tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
         tft.print("Graph Interval: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[0][config.conf.graphInterval]);
         currentOptions[0] = config.conf.graphInterval;
 
-        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+        tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
         tft.print("warmUpTime: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[1][config.conf.warmUpTime]);
         currentOptions[1] = config.conf.warmUpTime;
 
-        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+        tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
         tft.print("debug mode: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[2][config.conf.debugMode]);
         currentOptions[2] = config.conf.debugMode;
 
-        tft.setTextColor(ILI9341_GREEN, CUSTOM_DARK);
+        tft.setTextColor(TFT_GREEN, CUSTOM_DARK);
         tft.print("language: ");
-        tft.setTextColor(ILI9341_WHITE, CUSTOM_DARK);
+        tft.setTextColor(TFT_WHITE, CUSTOM_DARK);
         tft.println(optionsMatrix[3][config.conf.language]);
         currentOptions[3] = config.conf.language;
         // setup warm up timer
@@ -388,6 +415,9 @@ void runSetup() {
     tft.println("\nWarming up...");
     int lastSecond = 0;
     while (true) {
+        // TODO remove warmup bypass
+        break;
+        Serial.print(".");
         if ((millis() - getDataTimer) > optionsMatrix[1][config.conf.warmUpTime]) {
             break;
         }
@@ -399,7 +429,7 @@ void runSetup() {
         int lastX, lastY = 0;
         for (float i = 0; i < 2 * PI; i += 0.3) {
             if (lastSecond != ((warmUpTime - (millis() - getDataTimer)) / 1000)) {
-                tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
+                tft.setTextColor(TFT_ORANGE, CUSTOM_DARK);
                 tft.setCursor(110, 230);
                 tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
                 tft.print("s     ");
@@ -407,20 +437,14 @@ void runSetup() {
             lastSecond = ((warmUpTime - (millis() - getDataTimer)) / 1000);
             int x = cx + (r * cos(i));
             int y = cy + (r * sin(i));
-            tft.fillCircle(x, y, j, ILI9341_ORANGE);
-            Serial.print("i: ");
-            Serial.print(i);
-            Serial.print("X: ");
-            Serial.print(x);
-            Serial.print(" Y: ");
-            Serial.println(y);
+            tft.fillCircle(x, y, j, TFT_ORANGE);
             lastX = x;
             lastY = y;
             delay(50);
         }
         for (float i = 0; i < 2 * PI; i += 0.3) {
             if (lastSecond != ((warmUpTime - (millis() - getDataTimer)) / 1000)) {
-                tft.setTextColor(ILI9341_ORANGE, CUSTOM_DARK);
+                tft.setTextColor(TFT_ORANGE, CUSTOM_DARK);
                 tft.setCursor(110, 230);
                 tft.print((warmUpTime - (millis() - getDataTimer)) / 1000);
                 tft.print("s     ");
@@ -429,12 +453,6 @@ void runSetup() {
             int x = cx + (r * cos(i));
             int y = cy + (r * sin(i));
             tft.fillCircle(x, y, j, CUSTOM_DARK);
-            Serial.print("i: ");
-            Serial.print(i);
-            Serial.print("X: ");
-            Serial.print(x);
-            Serial.print(" Y: ");
-            Serial.println(y);
             lastX = x;
             lastY = y;
             delay(50);
@@ -446,23 +464,23 @@ void runSetup() {
 
 void drawHeader() {
     tft.fillScreen(CUSTOM_DARK);
-    tft.setTextColor(ILI9341_ORANGE);
+    tft.setTextColor(TFT_ORANGE);
     tft.setCursor(40, 20);
     tft.setTextSize(2);
-    tft.drawBitmap(5, 5, opens3, 28, 32, ILI9341_YELLOW);
+    tft.drawBitmap(5, 5, opens3, 28, 32, TFT_YELLOW);
     tft.println("Air Monitor");
-    tft.drawLine(40, 10, 240, 10, ILI9341_WHITE);
-    tft.drawLine(0, 40, 240, 40, ILI9341_WHITE);
+    tft.drawLine(40, 10, 240, 10, TFT_WHITE);
+    tft.drawLine(0, 40, 240, 40, TFT_WHITE);
 }
 
 void drawButtons(char buttons[3][16]) {
 
     tft.setTextSize(1);
-    tft.setTextColor(ILI9341_ORANGE);
-    tft.drawRect(0, 305, 240, 15, ILI9341_YELLOW);
-    tft.drawRect(0, 305, 80, 15, ILI9341_YELLOW);
-    tft.drawRect(80, 305, 80, 15, ILI9341_YELLOW);
-    tft.drawRect(160, 305, 80, 15, ILI9341_YELLOW);
+    tft.setTextColor(TFT_ORANGE);
+    tft.drawRect(0, 305, 240, 15, TFT_YELLOW);
+    tft.drawRect(0, 305, 80, 15, TFT_YELLOW);
+    tft.drawRect(80, 305, 80, 15, TFT_YELLOW);
+    tft.drawRect(160, 305, 80, 15, TFT_YELLOW);
     tft.setCursor(10, 310);
     tft.print(buttons[0]);
     tft.setCursor(100, 310);
@@ -530,8 +548,8 @@ void debug() {
 void drawGraph(int intervalID, int selectedDataSet) {
     Serial.println("Clearing graph area.");
     tft.fillRect(28, 120, 240, 170, CUSTOM_DARK);
-    tft.drawLine(30, 120, 30, xOffSet + 10, ILI9341_WHITE);
-    tft.drawLine(0, xOffSet + 10, 240, xOffSet + 10, ILI9341_WHITE);
+    tft.drawLine(30, 120, 30, xOffSet + 10, TFT_WHITE);
+    tft.drawLine(0, xOffSet + 10, 240, xOffSet + 10, TFT_WHITE);
     int lastX = 0;
     int lastY = 0;
     int min = 0, max = 0;
@@ -564,20 +582,20 @@ void drawGraph(int intervalID, int selectedDataSet) {
         // Space out our data points
         int currentX = (i * (240 / DATASET_LENGTH)) + 30;
 
-        int color = ILI9341_WHITE;
+        int color = TFT_WHITE;
         int CO2 = graphPoints[intervalID][selectedDataSet][i];
         if (CO2 <= 500) {
-            color = ILI9341_CYAN;
+            color = TFT_CYAN;
         } else if (CO2 <= 1000) {
-            color = ILI9341_GREEN;
+            color = TFT_GREEN;
         } else if (CO2 <= 1500) {
-            color = ILI9341_YELLOW;
+            color = TFT_YELLOW;
         } else if (CO2 <= 2000) {
-            color = ILI9341_ORANGE;
+            color = TFT_ORANGE;
         } else if (CO2 <= 2500) {
-            color = ILI9341_RED;
+            color = TFT_RED;
         } else if (CO2 <= 5000) {
-            color = ILI9341_PURPLE;
+            color = TFT_PURPLE;
         }
         tft.fillCircle(currentX, dotYLocation, 2, color);
         if (lastX > 0 && lastY > 0) {
@@ -623,29 +641,29 @@ void drawScales() {
     Serial.print("Y Scale: ");
     Serial.println(scale);
     tft.fillRect(0, 115, 30, (xOffSet - 115), CUSTOM_DARK);
-    tft.drawLine(30, 120, 30, xOffSet + 10, ILI9341_WHITE);
-    tft.drawLine(0, xOffSet + 10, 240, xOffSet + 10, ILI9341_WHITE);
+    tft.drawLine(30, 120, 30, xOffSet + 10, TFT_WHITE);
+    tft.drawLine(0, xOffSet + 10, 240, xOffSet + 10, TFT_WHITE);
     for (int i = 0; i < numYLabels; i++) {
-        int color = ILI9341_GREEN;
+        int color = TFT_GREEN;
         int label = (i * (yMax / numYLabels) * scale);
         if (label <= 500) {
-            color = ILI9341_CYAN;
+            color = TFT_CYAN;
         } else if (label <= 1000) {
-            color = ILI9341_GREEN;
+            color = TFT_GREEN;
         } else if (label <= 1500) {
-            color = ILI9341_YELLOW;
+            color = TFT_YELLOW;
         } else if (label <= 2000) {
-            color = ILI9341_ORANGE;
+            color = TFT_ORANGE;
         } else if (label <= 2500) {
-            color = ILI9341_RED;
+            color = TFT_RED;
         } else if (label <= 5000) {
-            color = ILI9341_PURPLE;
+            color = TFT_PURPLE;
         }
         tft.setTextColor(color);
         tft.setCursor(0, (xOffSet - ((i * (yMax / numYLabels)))));
         tft.print(i * (yMax / numYLabels) * scale);
     }
-    tft.setTextColor(ILI9341_ORANGE);
+    tft.setTextColor(TFT_ORANGE);
     tft.setCursor(90, (xOffSet + 12));
     tft.fillRect(90, (xOffSet + 12), 120, 10, CUSTOM_DARK);
     if (graphDataSet == 0) {
@@ -723,7 +741,7 @@ void calculateScale(int min, int max) {
 // TODO find space on the screen.
 void ticker(int lastSec, int curSec) {
     // Update uptime first.
-    tft.setTextColor(ILI9341_WHITE);
+    tft.setTextColor(TFT_WHITE);
     if (lastSec != curSec) {
         tft.setTextSize(1);
         tft.fillRect(50, 307, 60, 15, CUSTOM_DARK);

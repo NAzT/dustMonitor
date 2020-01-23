@@ -3,16 +3,16 @@
  */
 #include "optionsMenu.h"
 
-void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, char menuItems[5][16], char menuSettingsFields[5][5][16],
+void optionsMenu::drawOptionsMenu(TFT_eSPI tft, char menuItems[5][16], char menuSettingsFields[5][5][16],
                                   bool firstRun,
                                   int selected, int lastSelected, const int menuSettings[5]) {
 
     // Lazy update
     if (!firstRun) {
-        tft.drawRect(0, selected * 60, 240, 60, ILI9341_YELLOW);
+        tft.drawRect(0, selected * 60, 240, 60, TFT_YELLOW);
         tft.fillRect(0, lastSelected * 60, 240, 60, CUSTOM_DARK);
         tft.setTextSize(2);
-        tft.setTextColor(ILI9341_WHITE);
+        tft.setTextColor(TFT_WHITE);
         tft.setCursor(20, (selected * 60) + 30);
         tft.print(menuItems[selected]);
         tft.print(": ");
@@ -23,13 +23,13 @@ void optionsMenu::drawOptionsMenu(Adafruit_ILI9341 tft, char menuItems[5][16], c
     }
     for (int i = 0; i < 5; i++) {
         if (selected == i) {
-            tft.drawRect(0, i * 60, 240, 60, ILI9341_YELLOW);
+            tft.drawRect(0, i * 60, 240, 60, TFT_YELLOW);
         } else {
             tft.fillRect(0, i * 60, 240, 60, CUSTOM_DARK);
         }
         tft.setCursor(20, (i * 60) + 30);
         tft.setTextSize(2);
-        tft.setTextColor(ILI9341_WHITE);
+        tft.setTextColor(TFT_WHITE);
         tft.print(menuItems[i]);
     }
 
