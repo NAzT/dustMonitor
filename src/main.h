@@ -24,7 +24,7 @@ bool oldDeviceConnected = false;
 
 uint16_t BLE_MTU = 512;
 char BLE_SERVICE_ID[37] = "db101875-d9c4-4c10-b856-fad3a581a6ea";
-char BLE_TEMP_CHARACTERISTIC[37] = "06576524-99f9-4dc5-b6ea-c66dc433e6f2";
+char BLE_TVOC_CHARACTERISTIC[37] = "06576524-99f9-4dc5-b6ea-c66dc433e6f2";
 char BLE_HUMIDITY_CHARACTERISTIC[37] = "4e1fb0da-dc91-43ea-9b6d-77f699ddbbed";
 char BLE_GRAPH_CHARACTERISTIC[37] = "900dd909-eb3a-4774-bcdb-b10d8dd2ae28";
 
@@ -50,7 +50,7 @@ unsigned long bleGraphTimer = 0;
 
 unsigned long graphIntervalTimer[5] = {0, 0, 0, 0, 0};
 unsigned long uptime = 0;
-int lastTemperature = 0;
+int lastTVOC = 0;
 int lastCO2PPM = 0;
 int lastSecond = 0;
 

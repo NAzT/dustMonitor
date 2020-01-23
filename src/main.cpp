@@ -31,14 +31,19 @@ SPIClass sdSPI(VSPI);
 uint8_t state = 0;
 uint8_t g_btns[] = BUTTONS_MAP;
 char buff[512];
+// TTGO V13
 
+// CCS811
+#include "Adafruit_CCS811.h"
+Adafruit_CCS811 ccs;
+// CCS811
 
 // BLE
 BLEServer *pServer = NULL;
-BLECharacteristic *tempCharacteristic = NULL;
+BLECharacteristic *tvocCharacteristic = NULL;
 BLECharacteristic *co2Characteristic = NULL;
 BLECharacteristic *graphCharacteristic = NULL;
-float bleTemperatureValue = 0;
+float bleTvocValue = 0;
 float bleCo2Value = 0;
 char bleTemperatureString[16];
 char bleCo2String[16];
@@ -74,6 +79,11 @@ void setup() {
     myMHZ19.begin(mySerial);
     myMHZ19.autoCalibration();
 
+    if(!ccs.begin()){
+        Serial.println("Failed to start sensor! Please check your wiring.");
+    }
+    while(!ccs.available());
+
     initTFT();
     runSetup();
     drawHeader();
@@ -99,22 +109,22 @@ void loop() {
     // ************************************ BLE ********************************************************************* //
     // Deal with BLE first
     // Push BLE values first
-    // notify changed bleTemperatureValue
+    // notify changed bleTvocValue
     // 5 sec
     if (deviceConnected && (millis() - bleTimer >= 5000)) {
         // update every second
         Serial.println("Device connected. Pushing values.");
         Serial.print("Temperature: ");
-        Serial.println(bleTemperatureValue);
+        Serial.println(bleTvocValue);
         Serial.print("Co2: ");
         Serial.println(bleCo2Value);
 
-        sprintf(bleTemperatureString, "%4.2f", bleTemperatureValue);
+        sprintf(bleTemperatureString, "%4.2f", bleTvocValue);
         sprintf(bleCo2String, "%4.2f", bleCo2Value);
-        tempCharacteristic->setValue(bleTemperatureString);
+        tvocCharacteristic->setValue(bleTemperatureString);
         co2Characteristic->setValue(bleCo2String);
 
-        tempCharacteristic->notify();
+        tvocCharacteristic->notify();
         co2Characteristic->notify();
         bleTimer = millis();
 
@@ -201,12 +211,17 @@ void loop() {
         //ticker(lastSecond, curSecond);
         int CO2 = 0;
         CO2 = myMHZ19.getCO2();
-        int Temp = 0;
-        Temp = myMHZ19.getTemperature();
+        int TVOC = 0;
+
+        if(ccs.available()){
+            if(!ccs.readData()){
+                TVOC = ccs.getTVOC();
+            }
+        }
 
         // BLE conversion
         bleCo2Value = myMHZ19.getCO2();
-        bleTemperatureValue = myMHZ19.getTemperature();
+        bleTvocValue = TVOC;
 
         // Lazy update the CO2
         if (lastCO2PPM != CO2) {
@@ -234,15 +249,15 @@ void loop() {
             tft.print(CO2);
             tft.setTextColor(TFT_WHITE);
         }
-        // Lazy update the Temp
-        if (lastTemperature != Temp) {
-            // Temp
+        // Lazy update the TVOC
+        if (lastTVOC != TVOC) {
+            // TVOC
             tft.fillRect(110, 95, 80, 20, CUSTOM_DARK);
             tft.setCursor(5, 95);
             tft.setTextSize(2);
-            tft.print("Temp: ");
+            tft.print("TVOC: ");
             tft.setCursor(110, 95);
-            tft.print(Temp);
+            tft.print(TVOC);
         }
 
         /*
@@ -256,7 +271,7 @@ void loop() {
             if (timerCheck > optionsMatrix[0][t] || graphIntervalTimer[t] == 0) {
                 Serial.print("Adding data points for: ");
                 Serial.println(t);
-                addMeasurement(CO2, Temp, millis(), t);
+                addMeasurement(CO2, TVOC, millis(), t);
                 graphIntervalTimer[t] = millis();
                 // This is the 't' you are looking for...
                 if (t == currentOptions[0]) {
@@ -267,7 +282,7 @@ void loop() {
         long bleGraphTimerCheck = (millis() - bleGraphDatasetTimer);
         if (bleGraphTimerCheck > bleGraphInterval || bleGraphDatasetTimer == 0) {
             Serial.println("Adding data to ble graph.");
-            addBleGraphMeasurement(bleCo2Value, bleTemperatureValue, millis());
+            addBleGraphMeasurement(bleCo2Value, bleTvocValue, millis());
             bleGraphDatasetTimer = millis(); // reset timer
         }
         // draw graph if we are in selected graph or we have just started.
@@ -277,7 +292,7 @@ void loop() {
             drawGraph(currentOptions[0], graphDataSet);
         }
 
-        lastTemperature = Temp;
+        lastTVOC = TVOC;
         lastCO2PPM = CO2;
         lastSecond = curSecond;
         getDataTimer = millis();
@@ -314,8 +329,8 @@ void initBle() {
     BLEService *pService = pServer->createService(BLEUUID(BLE_SERVICE_ID));
 
     // Create a BLE Characteristic
-    tempCharacteristic = pService->createCharacteristic(
-            BLEUUID(BLE_TEMP_CHARACTERISTIC),
+    tvocCharacteristic = pService->createCharacteristic(
+            BLEUUID(BLE_TVOC_CHARACTERISTIC),
             BLECharacteristic::PROPERTY_READ |
             BLECharacteristic::PROPERTY_WRITE |
             BLECharacteristic::PROPERTY_NOTIFY |
@@ -340,11 +355,11 @@ void initBle() {
 
     // https://www.bluetooth.com/specifications/gatt/viewer?attributeXmlFile=org.bluetooth.descriptor.gatt.client_characteristic_configuration.xml
     // Create a BLE Descriptor
-    tempCharacteristic->addDescriptor(new BLE2902());
+    tvocCharacteristic->addDescriptor(new BLE2902());
     co2Characteristic->addDescriptor(new BLE2902());
     graphCharacteristic->addDescriptor(new BLE2902());
 
-    tempCharacteristic->setValue("0.0");
+    tvocCharacteristic->setValue("0.0");
     co2Characteristic->setValue("0.0");
     graphCharacteristic->setValue("0.0");
     // Start the service
@@ -415,8 +430,6 @@ void runSetup() {
     tft.println("\nWarming up...");
     int lastSecond = 0;
     while (true) {
-        // TODO remove warmup bypass
-        break;
         Serial.print(".");
         if ((millis() - getDataTimer) > optionsMatrix[1][config.conf.warmUpTime]) {
             break;
@@ -669,7 +682,7 @@ void drawScales() {
     if (graphDataSet == 0) {
         tft.print("CO2 ");
     } else {
-        tft.print("Temp ");
+        tft.print("TVOC ");
     }
     tft.print(menuSettingsFields[0][currentOptions[0]]);
     tft.print(" Trend");
@@ -842,7 +855,7 @@ void openOptionsMenu() {
     }
     inSubMenu = false;
     // Force lazy update
-    lastTemperature = lastCO2PPM = 0;
+    lastTVOC = lastCO2PPM = 0;
     drawHeader();
     drawScales();
     drawGraph(currentOptions[0], graphDataSet);
