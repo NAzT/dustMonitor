@@ -316,7 +316,7 @@ void loop() {
         lastSecond = curSecond;
         getDataTimer = millis();
     }
-    if (millis() - backlightTimer >= optionsMatrix[2][currentOptions[2] + 1]) {
+    if (millis() - backlightTimer >= optionsMatrix[2][currentOptions[2]]) {
         // turn off backlight
         Serial.print("Turning off backlight: ");
         Serial.println(optionsMatrix[2][currentOptions[2] + 1]);
