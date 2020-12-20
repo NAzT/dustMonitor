@@ -320,8 +320,12 @@ void loop() {
         // turn off backlight
         Serial.print("Turning off backlight: ");
         Serial.println(optionsMatrix[2][currentOptions[2] + 1]);
-        digitalWrite(TFT_BL, LOW);
-        backlight = false;
+        if (optionsMatrix[2][currentOptions[2]] == 1) {
+            Serial.println("Leaving on...");
+        } else {
+            digitalWrite(TFT_BL, LOW);
+            backlight = false;
+        }
         backlightTimer = millis();
     }
 }
@@ -592,7 +596,9 @@ void debug() {
 
 void drawGraph(int intervalID, int selectedDataSet) {
     Serial.println("Clearing graph area.");
-    tft.fillRect(28, 120, 240, 170, CUSTOM_DARK);
+    //tft.fillRect(28, 110, 240, 170, TFT_YELLOW);
+
+    tft.fillRect(28, 110, 240, 170, CUSTOM_DARK);
     tft.drawLine(30, 120, 30, xOffSet + 10, TFT_WHITE);
     tft.drawLine(0, xOffSet + 10, 240, xOffSet + 10, TFT_WHITE);
     int lastX = 0;
